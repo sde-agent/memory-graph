@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "memory_graph"
-version = "0.0.1"
+version = "0.0.2"
 description = "Memory Graph Engine — local-first photographic emotional intelligence"
 requires-python = ">=3.11"
 dependencies = [

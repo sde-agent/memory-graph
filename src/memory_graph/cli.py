@@ -794,7 +794,7 @@ def _cmd_doctor(_args: argparse.Namespace) -> int:
 def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(prog="memory-graph", description="Memory Graph Engine")
     parser.add_argument("--version", action="version", version=__version__)
-    sub = parser.add_subparsers(dest="command", required=True)
+    sub = parser.add_subparsers(dest="command", required=False)
 
     sub.add_parser("init", help="create the database and data directories")
     sub.add_parser("doctor", help="report config and environment health")
@@ -884,6 +884,9 @@ def main(argv: list[str] | None = None) -> int:
     sub.add_parser("mcp", help="run the MCP dispatch server over stdio")
 
     args = parser.parse_args(argv)
+    if not args.command:
+        parser.print_help()
+        return 0
 
     # Block outbound network for every command EXCEPT the two that bind a loopback
     # server socket themselves: `label` (the local labeling UI) and `mcp` (which calls

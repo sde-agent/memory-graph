@@ -4,10 +4,13 @@
 PY := .venv/bin/python
 PIP := $(PY) -m pip
 
-.PHONY: setup init doctor test lint fix clean publish-check app
+.PHONY: setup refresh init doctor test lint fix clean publish-check app
 
 setup:  ## create the venv and install the package (the only networked target)
 	python3 -m venv .venv
+	$(PIP) install -e ".[dev]"
+
+refresh:  ## reinstall the editable package after pulling repository updates
 	$(PIP) install -e ".[dev]"
 
 init:  ## create the database and data directories

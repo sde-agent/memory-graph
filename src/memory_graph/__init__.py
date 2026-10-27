@@ -5,4 +5,4 @@ each into a 5-quadrant emotional matrix, ranks by personal resonance, and narrat
 engine-authored insights. See .kiro/spec.md for the full contract.
 """
 
-__version__ = "0.0.1"
+__version__ = "0.0.2"

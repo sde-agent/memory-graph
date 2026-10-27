@@ -59,6 +59,24 @@ memory-graph doctor
 .venv/bin/memory-graph graph
 ```
 
+If you pull new repository commits into an existing checkout, refresh the editable CLI installation:
+
+```bash
+git pull
+make refresh
+memory-graph --version
+memory-graph sample-run --help
+```
+
+The `sample-run` help must show `--all`. If it does not, the command is still resolving an older environment; use the explicit path:
+
+```bash
+.venv/bin/python -m pip install -e ".[dev]"
+.venv/bin/memory-graph sample-run --all
+```
+
+Running `memory-graph` with no command now prints the help. The valid syntax is `memory-graph sample-run --all`; `-sample-run` is not valid argparse syntax.
+
 The setup command is the only networked step. It installs the local Python package and development dependencies.
 
 ## Configure your archive
