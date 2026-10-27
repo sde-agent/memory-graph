@@ -113,22 +113,37 @@ This scans the complete Photos Library metadata pool, deduplicates bursts and cr
 
 The Photos Library requires Full Disk Access for the terminal. If the run is interrupted, repeat the command; the analysis is resumable and existing photo IDs are skipped.
 
-If you see `FileNotFoundError: Could not get path to photo library database`:
+If you see `FileNotFoundError: Could not get path to photo library database`, follow these exact steps:
 
-1. Open the Photos app once and confirm the library opens.
-2. In Photos, use **Settings → General → Use as System Photo Library** if that option is available.
-3. In **System Settings → Privacy & Security → Full Disk Access**, enable your terminal app and restart the terminal.
-4. If the library is stored somewhere non-default, pass its database path explicitly:
-
-```bash
-memory-graph sample-run --all --dbfile "/path/to/Photos.sqlite"
-```
-
-You can test library discovery before a full run:
+1. Open the **Photos** app and confirm the library opens normally.
+2. In Photos, use **Photos → Settings → General → Use as System Photo Library** if that button is available.
+3. Open **System Settings → Privacy & Security → Full Disk Access**.
+4. Click the **+** button and authenticate with your Mac password/Touch ID. You must add the application that launches the command:
+   - Apple Terminal: `/Applications/Utilities/Terminal.app`
+   - iTerm: `/Applications/iTerm.app`
+   - Kiro: `/Applications/Kiro.app`
+   - VS Code: `/Applications/Visual Studio Code.app`
+5. Quit and reopen that application. Then test:
 
 ```bash
 memory-graph ingest-library --limit 1
 ```
+
+If you run the command in an IDE's integrated terminal, add the IDE itself—not only Apple Terminal. If **Full Disk Access** is empty, that is normal: click **+** to add the application manually; it does not appear automatically.
+
+If the Photos Library is stored somewhere non-default, find its database:
+
+```bash
+find "$HOME/Pictures" -name photos.sqlite -print
+```
+
+Then pass the result explicitly:
+
+```bash
+memory-graph sample-run --all --dbfile "/path/to/photos.sqlite"
+```
+
+The HDD is optional. `--dbfile` is only needed for a non-default Photos Library location.
 
 The runner reports the Library total, cheap rejections, canonical count, Vision rejections, and final database count. This makes coverage auditable instead of silently claiming that every asset became a separate graph row.
 

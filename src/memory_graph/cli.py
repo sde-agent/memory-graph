@@ -237,8 +237,11 @@ def _cmd_sample_run(args: argparse.Namespace) -> int:
             )
         except FileNotFoundError as exc:
             print("Photos Library database not found.")
-            print("Open Photos once, set the intended library as System Photo Library, "
-                  "grant Full Disk Access to Terminal, or pass --dbfile to its database.")
+            print("To fix this: open Photos and confirm the library opens; then open "
+                  "System Settings > Privacy & Security > Full Disk Access.")
+            print("Click +, authenticate, and add the app launching this command: "
+                  "Terminal, iTerm, Kiro, or VS Code. Quit and reopen that app afterward.")
+            print("If the library is stored elsewhere, pass its Photos.sqlite path with --dbfile.")
             print(f"details: {exc}")
             return 1
         pool.extend(lib_kept)
