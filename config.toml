@@ -1,0 +1,193 @@
+# Memory Graph Engine — default configuration.
+#
+# This file ships with the repo and contains NO personal data. Personal values
+# (archive paths, home position, eras, people-of-interest) go in a gitignored
+# `config.local.toml` that overlays this one. See product.md "V2" rules.
+#
+# Every threshold the engine uses lives here — never hard-coded. Changing a value
+# here is a deliberate, reviewable act.
+
+[ingest]
+# Long edge, in pixels, of the in-memory working thumbnail. ~512-768 per spec.
+thumb_long_edge = 768
+# File extensions treated as photos on the external HDD (lowercase, with dot).
+hdd_extensions = [".jpg", ".jpeg", ".heic", ".cr2", ".nef", ".arw", ".tiff", ".dng"]
+
+[dedup]
+# Two frames join a burst when within this many seconds AND near-duplicate by pHash
+# AND sharing a framing/camera "shot key".
+burst_window_seconds = 5.0
+phash_max_distance = 6
+
+[framing]
+# Lower edges (35mm-equivalent mm) of wide, standard, short-tele, tele, super-tele.
+bounds = [20.0, 35.0, 71.0, 135.0, 300.0]
+# Per-camera-model crop factor, used only when EXIF lacks a 35mm-equivalent focal.
+# Populated by the user in config.local.toml; empty by default (no personal data).
+[framing.crop]
+
+[sun]
+# Solar elevation (degrees) band edges. Golden hour is the Q1 / warmth signal.
+night_below = -6.0
+blue_hour_below = 0.0
+golden_hour_below = 6.0
+high_sun_from = 45.0
+
+[color]
+# warm_cool = mean(R) - mean(B) on the thumbnail. Above warm_from => warm-lit.
+warm_from = 8.0
+cool_below = -8.0
+
+# ---- 5-Quadrant soft scorer (ranges, not cliffs) --------------------------------
+# Each quadrant scores in [0,1] via smooth ramps. `full` = the core range scoring 1.0;
+# `fade` = the half-width of the linear taper to 0 on each side. These are a PRE-
+# REGISTERED first draft (evaluation.md B.6) — frozen before the accuracy eval so we
+# cannot fit to labels post hoc.
+[quadrants.q1_nostalgic]
+focal_full = [35.0, 58.0]
+focal_fade = 12.0
+aperture_wide_from = 2.8     # f-number at/below this reads as "wide / dreamlike bokeh"
+aperture_fade = 1.4
+
+[quadrants.q2_visceral]
+focal_full = [10.0, 24.0]    # ultra-wide
+focal_fade = 8.0
+fast_shutter_from = 0.001    # <= 1/1000s reads as frozen energy
+low_horizon_below = 0.35     # horizon_y_ratio below this = worm's-eye / low horizon
+
+[quadrants.q3_empathetic]
+focal_full = [70.0, 135.0]   # telephoto
+focal_fade = 25.0
+face_ratio_from = 0.20       # tight face crop
+face_ratio_fade = 0.10
+
+[quadrants.q4_solitary]
+negative_space_from = 0.60
+negative_space_fade = 0.15
+long_exposure_from = 2.0     # seconds
+
+[quadrants.q5_provocative]
+dutch_tilt_from = 4.5        # degrees
+dutch_tilt_fade = 2.0
+shutter_drag = [0.1, 0.5]    # seconds (intentional motion blur)
+
+# ---- Resonance ranking (evaluation.md Part A, TUNED to the labeling pass) ---------
+# Tuned to the STRICT dispatch-worthiness labels (corrected ground truth). Quadrant is
+# a soft minor input (single-argmax unreliable: felt top-1 29%, top-2 69%). Measured
+# lifts (worthy minus not-worthy): known_person +0.26, faces +0.22, Q3 +0.12; candid
+# was NEGATIVE (-0.05) and Q4 near-flat (+0.03) against the strict target — correcting
+# the earlier ambiguous-label tuning. Q3 (people/tender) is the top quadrant.
+[resonance.weights]
+q1 = 0.55
+q2 = 0.45
+q3 = 0.80   # the people/tender quadrant — the strongest dispatch-worthy quadrant
+q4 = 0.55
+q5 = 0.25
+
+[resonance.modifiers]
+# age_boost amplifies ONLY the Q1 term. Linear from 1.0 (now) to age_max_boost at
+# age_full_years and beyond. Not a global multiplier.
+age_full_years = 15.0
+age_max_boost = 1.8
+# warm_gate scales the Q2 term when NOT warm-lit (cold ultra-wide != "warm aliveness").
+warm_gate_cold = 0.4
+# Flat multipliers (default 1.0 when the signal is unavailable). Tuned to the measured
+# STRICT lifts: known_person dominates; candid was anti-predictive so it is now neutral.
+candid_bonus = 1.05          # candid was NOT dispatch-predictive (-0.05); near-neutral
+posed_penalty = 0.95
+favorite_bonus = 1.5         # rare but explicit; small positive lift
+known_person_bonus = 2.0     # STRONGEST signal by far (+0.26 lift); weighted up
+face_present_bonus = 1.3     # a face present is strongly dispatch-worthy (+0.22 lift)
+# The quadrant affinity is scaled down so it is a minor input next to the person/taste
+# signals (Part C). base_quadrant_affinity is multiplied by this before the multipliers.
+quadrant_weight = 0.6
+# The taste model's learned "would I want to see this again" (61% winner-rate).
+taste_weight = 1.0
+# Blur de-weight: DISABLED (blur_deweight = 1.0) after the strict-relabel finding.
+# The labels showed the owner's dispatch-worthy photos are actually LESS sharp on
+# average (median 170) than the ones they'd skip (median 351) — cherished moments are
+# often soft/candid/shallow-DOF, while razor-sharp shots skew mundane. A blur de-weight
+# would rank the owner's taste BACKWARDS, so it is neutralized. (Accidental-shake junk
+# is still handled where it works: burst keyframe election picks the sharpest of
+# near-identical frames.) Kept as a tunable knob; 1.0 = no effect.
+blur_floor = 60.0
+blur_deweight = 1.0
+
+[dispatch]
+# Daily dispatch size and anti-repeat / diversity floors (DR-3, DR-4).
+count_min = 1
+count_max = 3
+repeat_window_days = 60
+# Over a rolling month, favorites must not exceed this share of dispatched photos.
+max_favorite_share = 0.5
+seed = 0
+
+[rejection]
+# Clutter / document / screenshot gate (evaluation.md B.2). ASYMMETRIC LOSS: a false
+# reject of a cherished photo is far worse than a false keep, so these favor KEEPING.
+# A flagged photo is quarantined for owner review, NEVER auto-deleted.
+vision_confidence = 0.25        # Apple Vision identifier must reach this to count
+# Vision scene identifiers that mark a document-like image (spaces, lowercased).
+document_ids = [
+    "document", "printed page", "handwriting", "whiteboard", "chalkboard",
+    "receipt", "newspaper", "text", "menu", "scoreboard",
+]
+screenshot_ids = ["screenshot"]
+# "flat / nothing": almost no contrast AND almost no saturation (a blank wall, a scan).
+# contrast raised to 0.07 after labels showed blanks at 0.044-0.056 leaking through.
+low_contrast_below = 0.07
+low_saturation_below = 0.05
+# Text density: a document / ID card / receipt / text screenshot has a large fraction
+# of the frame covered by text regions. Lowered to 0.12 (leaked docs sat at 0.08-0.27),
+# but ONLY rejects when no real-photo content is present (see _PROTECTIVE_IDS) so a
+# child-near-a-sign is never rejected.
+text_coverage_reject = 0.12
+# Single-color / flat-wall frame: near-total spatial uniformity, ANY hue (so a uniform
+# purple wall is rejected but a vivid, varied purple sunset survives). Lowered to 0.70
+# after a blank at uniformity 0.69 leaked through.
+uniformity_reject = 0.70
+
+[faces]
+# A named-recognition match must clear this cosine similarity to assert a name
+# (evaluation.md B.4). Below it: "a person is present" only, never a name.
+recognition_min_similarity = 0.55
+
+[identity]
+# Experimental, versioned Apple Vision face feature prints. Generic feature prints need
+# a precision calibration before identity results are trusted; keep the bar conservative.
+feature_model_version = "vision-feature-print-v1"
+gallery_path = "gallery/named_faces.npz"
+embeddings_path = "gallery/face_embeddings.npz"
+crop_padding = 0.25
+anonymous_similarity_threshold = 0.90
+anonymous_min_cluster_size = 2
+max_references_per_name = 64
+
+[privacy]
+# Photos in these albums are off-limit: never narrated, never dispatched off-device.
+hidden_albums = ["Hidden"]
+
+[owner]
+# The archive owner's OWN name(s) as they appear in the Photos face-naming. When the
+# owner is in a frame, someone else held the camera, so those photos are not the owner's
+# technical choices. Setting this lets the insight generators treat owner-present photos
+# correctly (the owner is never a 'subject you framed'; a pairing with the owner reads as
+# 'you appear alongside X'). Empty by default — personal; set in config.local.toml.
+self_names = []
+
+[eras]
+# Life eras for the longitudinal critique ("my style in the 2010s"). Each era is a
+# label with an inclusive start year and exclusive end year. Personal; a new user
+# edits these in config.local.toml. The defaults are decade buckets (no personal data).
+ranges = [
+    { label = "2000s", start = 2000, end = 2010 },
+    { label = "early 2010s", start = 2010, end = 2015 },
+    { label = "late 2010s", start = 2015, end = 2020 },
+    { label = "2020s", start = 2020, end = 2030 },
+]
+
+[narration]
+# Local LLM backend: "foundation_models" (portable default) or "claude_cli" (author
+# upgrade). Both are held to the same groundedness checks.
+backend = "foundation_models"
+max_regenerations = 1        # one retry, then fall back to template (honest, labeled)

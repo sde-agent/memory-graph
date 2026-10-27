@@ -1,0 +1,135 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Memory Graph — Insight Promotion Review</title>
+<style>
+  :root { color-scheme: light; --ink:#1f2937; --muted:#64748b; --line:#dbe3ec; --blue:#2563eb; --green:#15803d; --amber:#b45309; --bg:#f8fafc; --card:#fff; }
+  * { box-sizing:border-box; }
+  body { margin:0; font:15px/1.5 -apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif; color:var(--ink); background:var(--bg); }
+  header { background:#172033; color:white; padding:28px max(20px,calc((100% - 1080px)/2)); }
+  header h1 { margin:0 0 6px; font-size:25px; }
+  header p { margin:0; color:#cbd5e1; max-width:760px; }
+  main { max-width:1080px; margin:24px auto 80px; padding:0 20px; }
+  .toolbar { position:sticky; top:0; z-index:5; display:flex; flex-wrap:wrap; gap:10px; align-items:center; background:rgba(248,250,252,.96); border-bottom:1px solid var(--line); padding:12px 0; margin-bottom:20px; }
+  button { border:0; border-radius:7px; padding:9px 13px; cursor:pointer; font-weight:600; background:var(--blue); color:white; }
+  button.secondary { background:#e2e8f0; color:var(--ink); }
+  .count { margin-left:auto; color:var(--muted); }
+  .stage { margin:24px 0; }
+  .stage h2 { margin:0 0 4px; font-size:20px; }
+  .stage > p { margin:0 0 12px; color:var(--muted); }
+  .grid { display:grid; grid-template-columns:repeat(auto-fit,minmax(310px,1fr)); gap:10px; }
+  .item { display:flex; gap:11px; align-items:flex-start; background:var(--card); border:1px solid var(--line); border-radius:9px; padding:13px; }
+  .item input { margin-top:4px; width:17px; height:17px; accent-color:var(--blue); flex:0 0 auto; }
+  .item label { cursor:pointer; flex:1; }
+  .title { display:block; font-weight:700; }
+  .desc { display:block; color:var(--muted); margin-top:2px; }
+  .badge { display:inline-block; margin-top:7px; border-radius:99px; padding:2px 8px; font-size:11px; font-weight:700; }
+  .promoted { color:var(--green); background:#dcfce7; }
+  .gap { color:var(--amber); background:#fef3c7; }
+  .partial { color:#1d4ed8; background:#dbeafe; }
+  .notice { border-left:4px solid var(--blue); background:#eff6ff; padding:13px 15px; border-radius:5px; margin:20px 0; }
+  pre { white-space:pre-wrap; background:#111827; color:#d1fae5; padding:14px; border-radius:8px; max-height:300px; overflow:auto; }
+  footer { color:var(--muted); font-size:13px; margin-top:25px; }
+</style>
+</head>
+<body>
+<header>
+  <h1>Memory Graph — What should become an insight?</h1>
+  <p>Check the constructs you want promoted next. “Promoted” means the engine should turn stored signals into grounded, retrievable insight nodes—not that the LLM should guess from raw data.</p>
+</header>
+<main>
+  <div class="notice"><strong>How to use this:</strong> choose items by stage, then click <em>Export selection</em>. The downloaded JSON is the implementation brief for the next graph-generation pass. Existing nodes are shown for context; only unchecked gaps are candidates for promotion.</div>
+  <div class="toolbar">
+    <button id="export">Export selection</button>
+    <button class="secondary" id="clear">Clear new selections</button>
+    <button class="secondary" id="allGaps">Select all gaps</button>
+    <span class="count" id="count">0 selected</span>
+  </div>
+  <section class="stage">
+    <h2>Stage 1 — Fundamental photographic constructs</h2>
+    <p>Technical choices that should be directly queryable because they shape photographic intent.</p>
+    <div class="grid">
+      <div class="item"><input type="checkbox" data-id="shutter_motion"><label><span class="title">Shutter speed and motion</span><span class="desc">Preference for frozen action, intentional drag, or motion blur.</span><span class="badge gap">Not promoted</span></label></div>
+      <div class="item"><input type="checkbox" data-id="iso_preference"><label><span class="title">ISO / low-light behavior</span><span class="desc">Whether the photographer embraces high ISO, clean light, or available darkness.</span><span class="badge gap">Not promoted</span></label></div>
+      <div class="item"><input type="checkbox" data-id="horizon_angle"><label><span class="title">Dutch angle and horizon geometry</span><span class="desc">Frequency and emotional use of tilt, low horizon, centered horizon, or level framing.</span><span class="badge gap">Not promoted</span></label></div>
+      <div class="item"><input type="checkbox" data-id="negative_space"><label><span class="title">Negative space</span><span class="desc">Preference for open space, isolation, sky, water, and breathing room.</span><span class="badge gap">Not promoted</span></label></div>
+      <div class="item"><input type="checkbox" data-id="sharpness_softness"><label><span class="title">Sharpness versus softness</span><span class="desc">Whether cherished work tends to be crisp, soft, motion-blurred, or shallow-focus.</span><span class="badge gap">Not promoted</span></label></div>
+      <div class="item"><input type="checkbox" data-id="candidness"><label><span class="title">Candid versus posed</span><span class="desc">A standalone distribution of unposed, candid, frontal, and formal group images.</span><span class="badge gap">Not promoted</span></label></div>
+      <div class="item"><input type="checkbox" data-id="depth_bokeh" checked disabled><label><span class="title">Depth of field / bokeh</span><span class="desc">Wide-aperture and bokeh-friendly proxy nodes now exist, with a data caveat.</span><span class="badge promoted">Promoted</span></label></div>
+      <div class="item"><input type="checkbox" data-id="focal_framing" checked disabled><label><span class="title">Focal length and framing</span><span class="desc">Wide, normal, telephoto, median framing, and framing trends.</span><span class="badge promoted">Promoted</span></label></div>
+    </div>
+  </section>
+  <section class="stage">
+    <h2>Stage 2 — Camera and equipment comparisons</h2>
+    <p>How the physical tool changes the photographer’s behavior.</p>
+    <div class="grid">
+      <div class="item"><input type="checkbox" data-id="camera_iphone_dslr" checked disabled><label><span class="title">iPhone versus DSLR</span><span class="desc">Current comparison: iPhone wider; DSLR more isolating and more people-oriented.</span><span class="badge promoted">Promoted</span></label></div>
+      <div class="item"><input type="checkbox" data-id="camera_by_era"><label><span class="title">Camera behavior by era</span><span class="desc">D700 versus iPhone versus other bodies across 2000s, 2010s, and 2020s.</span><span class="badge gap">Not promoted</span></label></div>
+      <div class="item"><input type="checkbox" data-id="individual_camera_models"><label><span class="title">Individual camera-model signatures</span><span class="desc">D700, XTi, X100S, iPhone generations, and compact cameras as separate voices.</span><span class="badge gap">Not promoted</span></label></div>
+      <div class="item"><input type="checkbox" data-id="lens_models"><label><span class="title">Lens-model preference</span><span class="desc">Specific lenses, not just focal-length bands.</span><span class="badge gap">Not promoted</span></label></div>
+      <div class="item"><input type="checkbox" data-id="camera_subjects"><label><span class="title">Camera × subject</span><span class="desc">Which camera is used for family, landscapes, pets, travel, or events.</span><span class="badge gap">Not promoted</span></label></div>
+    </div>
+  </section>
+  <section class="stage">
+    <h2>Stage 3 — Human presence and recurring life</h2>
+    <p>Who and what recurs, including eras where names are unavailable.</p>
+    <div class="grid">
+      <div class="item"><input type="checkbox" data-id="anonymous_trajectories"><label><span class="title">Anonymous-person trajectories</span><span class="desc">Recurring unnamed person clusters rising, fading, or peaking across eras.</span><span class="badge partial">Partial: recurrence exists; trajectories do not</span></label></div>
+      <div class="item"><input type="checkbox" data-id="family_presence"><label><span class="title">Family / close-circle presence</span><span class="desc">Grounded “people central” and family-context summaries when identity coverage is sparse.</span><span class="badge partial">Partial: people and names exist; family role model does not</span></label></div>
+      <div class="item"><input type="checkbox" data-id="face_coverage_quality"><label><span class="title">Identity coverage quality</span><span class="desc">Explicitly explain D700-era unnamed-face coverage and how it limits conclusions.</span><span class="badge gap">Not promoted as its own node</span></label></div>
+      <div class="item"><input type="checkbox" data-id="face_match_quality"><label><span class="title">Face-match confidence</span><span class="desc">Expose when names come from Apple authority, pHash bridge, or experimental matching.</span><span class="badge gap">Not promoted</span></label></div>
+      <div class="item"><input type="checkbox" data-id="people_camera_interaction"><label><span class="title">People × camera</span><span class="desc">How identity and recurring human presence change across D700, iPhone, and other bodies.</span><span class="badge gap">Not promoted</span></label></div>
+    </div>
+  </section>
+  <section class="stage">
+    <h2>Stage 4 — Place, time, and lived context</h2>
+    <p>Life context beyond decade buckets.</p>
+    <div class="grid">
+      <div class="item"><input type="checkbox" data-id="places_regions"><label><span class="title">Places and regions</span><span class="desc">Where the photographic voice changes by city, country, or recurring location.</span><span class="badge gap">Not promoted</span></label></div>
+      <div class="item"><input type="checkbox" data-id="travel"><label><span class="title">Travel and home context</span><span class="desc">Travel chapters, relocations, home life, and place-based photographic changes.</span><span class="badge gap">Not promoted</span></label></div>
+      <div class="item"><input type="checkbox" data-id="season_month"><label><span class="title">Season and month</span><span class="desc">Seasonal light, recurring months, birthdays, holidays, or annual rituals.</span><span class="badge gap">Not promoted</span></label></div>
+      <div class="item"><input type="checkbox" data-id="time_of_day"><label><span class="title">Night/day and golden hour</span><span class="desc">Current day/night and golden-hour nodes already exist.</span><span class="badge promoted">Promoted</span></label></div>
+    </div>
+  </section>
+  <section class="stage">
+    <h2>Stage 5 — Resonance and memory behavior</h2>
+    <p>What the owner returns to, and why.</p>
+    <div class="grid">
+      <div class="item"><input type="checkbox" data-id="resonance_by_camera"><label><span class="title">Resonance by camera</span><span class="desc">Whether iPhone, DSLR, or another body produces more keep-worthy memories.</span><span class="badge gap">Not promoted</span></label></div>
+      <div class="item"><input type="checkbox" data-id="resonance_by_construct"><label><span class="title">Resonance by optical construct</span><span class="desc">Whether favorites favor bokeh, wide views, motion, negative space, or sharpness.</span><span class="badge gap">Not promoted</span></label></div>
+      <div class="item"><input type="checkbox" data-id="taste_explanation"><label><span class="title">Taste-model explanation</span><span class="desc">Why a photo scored as likely-to-return-to, without turning the taste model into an oracle.</span><span class="badge gap">Not promoted</span></label></div>
+      <div class="item"><input type="checkbox" data-id="favorite_patterns"><label><span class="title">Favorite patterns</span><span class="desc">What Apple Photos favorites reveal about subjects, people, eras, and technical choices.</span><span class="badge gap">Not promoted</span></label></div>
+    </div>
+  </section>
+  <section class="stage">
+    <h2>Current promoted families</h2>
+    <p>These are already represented in the graph: color, framing, depth/bokeh proxy, camera families, light, solitude, landscapes, subjects, people, relationships, anonymous recurrence, signatures, emotional style, era style, longitudinal change, trends, conjunctions, unknown-face coverage, and resonance gap.</p>
+  </section>
+  <h2>Exported selection</h2>
+  <pre id="output">Select one or more unchecked items, then click Export selection.</pre>
+  <footer>Selections are saved in this browser’s local storage. Export does not modify the database.</footer>
+</main>
+<script>
+const boxes = [...document.querySelectorAll('input[type=checkbox]:not(:disabled)')];
+const key = 'memory-graph-promotion-review-v1';
+const saved = JSON.parse(localStorage.getItem(key) || '{}');
+boxes.forEach(b => { if (saved[b.dataset.id]) b.checked = true; b.addEventListener('change', update); });
+function selected() { return boxes.filter(b => b.checked).map(b => b.dataset.id); }
+function update() {
+  const ids = selected(); localStorage.setItem(key, JSON.stringify(Object.fromEntries(ids.map(x => [x, true]))));
+  document.getElementById('count').textContent = `${ids.length} selected`; return ids;
+}
+document.getElementById('export').onclick = () => {
+  const payload = { version: 1, created_at: new Date().toISOString(), promote: update() };
+  document.getElementById('output').textContent = JSON.stringify(payload, null, 2);
+  const blob = new Blob([JSON.stringify(payload, null, 2)], {type:'application/json'});
+  const a = document.createElement('a'); a.href = URL.createObjectURL(blob); a.download = 'memory-graph-promotion-selection.json'; a.click(); URL.revokeObjectURL(a.href);
+};
+document.getElementById('clear').onclick = () => { boxes.forEach(b => b.checked = false); update(); document.getElementById('output').textContent = 'Selections cleared.'; };
+document.getElementById('allGaps').onclick = () => { boxes.forEach(b => b.checked = true); update(); };
+update();
+</script>
+</body>
+</html>

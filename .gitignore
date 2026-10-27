@@ -1,0 +1,24 @@
+# No personal data in the repo, ever (product.md V2 rule).
+# Everything personal lives here and is never tracked.
+/data/
+config.local.toml
+
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+.eggs/
+build/
+dist/
+.venv/
+venv/
+
+# Tooling caches
+.pytest_cache/
+.ruff_cache/
+.mypy_cache/
+
+# Compiled Swift helper (built on first use from helpers/*.swift; never committed).
+/helpers/foundation_narrate
+# OS
+.DS_Store

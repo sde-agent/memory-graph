@@ -1,0 +1,49 @@
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "memory_graph"
+version = "0.0.1"
+description = "Memory Graph Engine — local-first photographic emotional intelligence"
+requires-python = ">=3.11"
+dependencies = [
+    "osxphotos",
+    "pyobjc-framework-Vision",
+    "pyobjc-framework-Quartz",
+    "pillow",
+    "numpy",
+    "mcp",
+]
+
+# CLIP/torch are only needed by the V1.5 taste model; kept optional so the core
+# engine stays installable on machines (and a future iOS core) without torch.
+[project.optional-dependencies]
+taste = ["open_clip_torch", "torch"]
+# The local reflection app (Streamlit search bar). Optional so the core engine and MCP
+# server stay lean; install with `pip install -e ".[app]"` or `make app`.
+app = ["streamlit"]
+dev = ["pytest", "pytest-socket", "ruff"]
+
+[project.scripts]
+memory-graph = "memory_graph.cli:main"
+
+[tool.setuptools.packages.find]
+where = ["src"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+markers = [
+    "library: needs Full Disk Access and a real Photos library",
+    "vision: needs Apple Vision (macOS with pyobjc)",
+    "taste: needs CLIP weights (optional 'taste' extra)",
+]
+# Sockets disabled in tests: the engine is local-first and must never phone home.
+addopts = "--disable-socket --allow-unix-socket"
+
+[tool.ruff]
+line-length = 100
+src = ["src", "tests"]
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "B", "UP"]

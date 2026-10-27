@@ -1,0 +1,72 @@
+# config.local.toml.example
+#
+# Copy this to `config.local.toml` and fill in YOUR values. That file is
+# gitignored and never committed — it is where every personal detail lives
+# (archive paths, your name, your camera crop factors, your life eras).
+#
+# This overlay is MERGED on top of the shipped `config.toml`. You only need to
+# set the keys you want to change or add; everything else falls back to the
+# defaults in `config.toml`.
+#
+#   cp config.local.toml.example config.local.toml
+#   # then edit config.local.toml
+
+# ---------------------------------------------------------------------------
+# Where your photos live
+# ---------------------------------------------------------------------------
+# NOTE: the external-drive path is NOT set here — you pass it on the command
+# line when you run the HDD ingest, e.g.:
+#     memory-graph ingest-hdd "/Volumes/YourDrive/Photos"
+# The macOS Photos Library is read automatically via osxphotos (derivatives
+# only, never masters), so it needs no path.
+
+# ---------------------------------------------------------------------------
+# Who you are
+# ---------------------------------------------------------------------------
+[owner]
+# Your OWN name(s) exactly as they appear when you name faces in Apple Photos.
+# This matters: photos YOU appear in were taken by someone else, so they are not
+# your framing choices. Setting this stops the engine from attributing other
+# people's shots of you TO you. List every spelling/variant Photos has for you.
+self_names = ["Your Name"]
+
+# ---------------------------------------------------------------------------
+# Camera crop factors (IMPORTANT for older cameras)
+# ---------------------------------------------------------------------------
+# Many cameras — Canon DSLRs/compacts, most point-and-shoots, older phones —
+# do NOT record the 35mm-equivalent focal length, only the raw lens focal. Left
+# uncorrected, every such photo is misread as "ultra-wide" and the whole feeling
+# score is skewed. Set a crop factor per camera model (as the model string appears
+# in EXIF). Full-frame bodies are 1.0. A few common examples:
+[framing.crop]
+# "Canon EOS 5D" = 1.0          # full-frame
+# "Canon EOS DIGITAL REBEL XTi" = 1.6   # APS-C
+# "FUJIFILM X100S" = 1.52
+# "iPhone 4" = 7.64
+# "KODAK DC5000 ZOOM DIGITAL CAMERA" = 4.762
+# To find a camera's crop factor: look up its sensor size, or divide a known
+# 35mm-equivalent focal by the raw focal the camera recorded for the same shot.
+# Full-frame = 1.0, APS-C Canon = 1.6, APS-C Nikon/Sony = 1.5, Micro 4/3 = 2.0.
+# (An automated "scan my library for cameras missing this" setup step is planned
+# for the public V2 release; for now you add models by hand.)
+
+# ---------------------------------------------------------------------------
+# Your life eras (for "what was my style in the 2010s?")
+# ---------------------------------------------------------------------------
+# Optional. Defaults to decade buckets. Override to match YOUR life chapters
+# (a move, kids, a big trip). start is inclusive, end is exclusive.
+[eras]
+ranges = [
+    { label = "2000s", start = 2000, end = 2010 },
+    { label = "early 2010s", start = 2010, end = 2015 },
+    { label = "late 2010s", start = 2015, end = 2020 },
+    { label = "2020s", start = 2020, end = 2030 },
+]
+
+# ---------------------------------------------------------------------------
+# Privacy
+# ---------------------------------------------------------------------------
+[privacy]
+# Albums that are completely off-limits: never analyzed for dispatch, never
+# narrated, never shown. Defaults to the Apple Photos "Hidden" album.
+hidden_albums = ["Hidden"]
