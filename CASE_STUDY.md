@@ -1,59 +1,94 @@
 # Building a Photographic Memory Graph
 
-## An AI product-management case study
+I built this because I wanted to understand my own photographs—not just find them.
 
-This project started with a simple question:
+A normal photo search can tell me when a picture was taken, where it was taken, or what appears in it. I wanted something closer to a personal visual memory: a system that could surface a photograph that made me pause, and explain the technical choices and human context behind it.
 
-> Can a local-first system surface the photographs that make someone stop and feel something—and explain why those photographs matter?
+This is a technical account of what I built, what surprised me, what failed, and what the archive taught me.
 
-The answer required more than a photo browser, a search box, or a generic vision model. It required a product thesis, a data model, a ranking system, an insight graph, local privacy guardrails, and repeated correction when the system sounded plausible but was wrong.
+## The question
 
-## The problem
+A lifetime archive contains more than files. It contains changes in attention:
 
-A lifetime photo archive contains far more than files. It contains eras, relationships, creative habits, technical choices, and memories that are not expressed by filenames or dates.
+- who I kept photographing;
+- how close I stood;
+- which cameras changed my habits;
+- whether I preferred open space or crowded frames;
+- whether I used shallow focus, motion, or sharpness to create a feeling;
+- which people and periods became important in retrospect.
 
-A useful companion needed to answer two kinds of questions:
+I wanted to ask questions such as:
 
-1. **Daily memory:** Which one to three photographs would I be glad to see today?
-2. **Creative reflection:** What was my photographic style in the 2010s? How did my camera choices change what I photographed? Did I prefer night or day? Did I favor bokeh, open space, or close human moments?
+- “What was my style in the 2010s?”
+- “How do my camera choices affect the people I photograph?”
+- “Do I prefer bokeh or deep focus?”
+- “Do I prefer night or day?”
+- “Which memories should return to me today?”
 
-The product constraint was strict: photographs must stay on the Mac. Pixels cannot be sent to a hosted model. The system may expose grounded text and a loopback link, but not image bytes.
+The central constraint was privacy. The photographs stay on my Mac. Pixels never go to a hosted model. A narrator can receive grounded text, but never image bytes.
 
-## The product thesis
+## The idea
 
-Technical choices are emotional posture.
+I treated photographic technique as a kind of emotional posture.
 
-- A normal lens at eye level can feel like preservation and memory.
+- A normal lens at eye level can feel like preservation.
 - A telephoto lens isolating a face can feel like tenderness and attention.
 - An ultra-wide lens from a low angle can express scale and awe.
 - Negative space and long exposure can express solitude.
 - A canted horizon or shutter drag can create tension.
 
-The system therefore maps photographs into five soft emotional quadrants, but it does not treat the quadrant as a final truth. It combines optics, light, geometry, faces, content, identity, favorites, age, and learned taste.
+The system turns those signals into five soft emotional quadrants. They are not presented as psychological truth. They are a vocabulary for describing recurring visual choices.
 
-## Architecture
+## How the system works
 
-The system has four important layers:
+### Local ingest
 
-### 1. Local ingest and measurement
+The engine reads an external HDD sequentially and reads macOS Photos through `osxphotos`. It uses local Photos derivatives and never opens Photos masters, which avoids triggering iCloud downloads.
 
-The engine reads:
+Thumbnails are temporary. The system extracts measurements, releases the image, and stores metadata and derived signals rather than full-resolution copies.
 
-- external HDD archives sequentially;
-- macOS Photos metadata through `osxphotos`;
-- local Photos derivatives only, never Photos masters;
-- in-memory thumbnails, EXIF, Vision signals, face attributes, scene labels, optics, light, geometry, and sharpness.
-
-The current V1 database contains **55,771 canonical photographs**:
+The final V1 archive contains **55,771 canonical photographs**:
 
 - 22,737 from the HDD;
 - 33,034 from the Photos Library.
 
-The full archive started as a 9,639-photo stratified sample. Expanding it increased the evidence base by about 5.8× and increased the Favorite signal from 72 to 649 examples.
+The project began with a 9,639-photo stratified sample. Expanding to the full available archive made the evidence denser and increased the Favorite signal from 72 to 649 examples.
 
-### 2. Resonance ranking
+### Measurements
 
-The dispatch score is a configurable signal, not an emotional oracle:
+Each photo can carry:
+
+- camera make, body, and lens metadata;
+- raw and 35mm-equivalent focal length;
+- aperture, shutter speed, ISO, and derived EV;
+- horizon angle and height;
+- negative-space estimate;
+- golden-hour and warmth signals;
+- sharpness;
+- Vision scene labels;
+- face count, face size, gaze, eyes, and candidness;
+- named people when identity is trustworthy;
+- anonymous recurring-face clusters;
+- quadrant scores and resonance inputs.
+
+### Memory graph
+
+The system does not hand raw rows to the narrator and ask it to discover the story. Code promotes observations into structured insight nodes first. Each node has a claim, tags, an optional direction and magnitude, and evidence context.
+
+The final V1 graph contains **192 nodes across 33 dimensions**, including:
+
+- emotional style and era style;
+- framing, depth of field, exposure, geometry, sharpness, and candidness;
+- cameras, lenses, seasons, travel, and location coverage;
+- people, relationships, named identity, anonymous recurrence, and identity caveats;
+- subjects, landscapes, light, color, and golden-hour associations;
+- change over time, resonance gaps, taste, and favorites.
+
+The language model narrates selected nodes. It does not create the underlying claims.
+
+### Resonance
+
+The daily memory score is configurable:
 
 ```text
 resonance = quadrant_affinity
@@ -64,7 +99,7 @@ resonance = quadrant_affinity
           × blur_adjustment
 ```
 
-The current V1 global settings are:
+The current V1 settings are:
 
 | Signal | Current value |
 |---|---:|
@@ -81,177 +116,110 @@ The current V1 global settings are:
 | Taste-model influence | 1.0 |
 | Blur adjustment | neutral at 1.0× |
 
-The weights are intentionally visible and configurable. V1 does **not** yet provide per-person, per-camera, per-subject, or hard exclusion controls. That is a V2 requirement.
+These are current engineering settings, not universal truths about photography. Per-person and hard exclusion controls are intentionally left for V2.
 
-### 3. Insight graph
+## What went wrong, and what I learned
 
-The graph is not a dump of photo rows. It is a set of engine-authored claims, each with retrieval tags and evidence. The LLM narrates selected claims; it does not invent the claims.
+### More photos did not automatically mean more nodes
 
-The final V1 graph contains **192 nodes across 33 dimensions**, including:
+The first graph had 126 nodes. A finer time slicing experiment produced 461 nodes from the same photos, but the answers became worse because the selection budget filled with repetitive yearly fragments.
 
-- color and seasonal patterns;
-- focal length and framing;
-- depth-of-field and bokeh-friendly optical proxies;
-- ISO, horizon geometry, negative space, sharpness, and candidness;
-- iPhone/DSLR comparisons and camera-model signatures;
-- lens, travel, and location-coverage observations;
-- people, relationships, named identity, anonymous recurring faces, and identity caveats;
-- subjects, landscapes, golden-hour associations, and light behavior;
-- emotional style by era;
-- longitudinal changes and resonance gaps;
-- taste and favorite explanations.
+The useful lesson was that graph richness comes from meaningful dimensions, not from generating an enormous pile of nodes.
 
-### 4. Swappable local narrators
+### Several bad answers were retrieval bugs
 
-The same grounded notes can be narrated by:
+A color question once pulled a golden-hour person because both the color node and the person node contained the word “warm.” A camera-and-people question pulled a golden-hour acquaintance because it shared the generic tag “people.”
 
-- Apple Foundation Models on-device;
-- Apple Private Cloud Compute when packaging/entitlements permit;
-- the local Claude CLI for development comparison.
+The fix was not more eloquent prompting. I added topic boundaries and dimension-aware retrieval. A color question now retrieves color evidence. A camera-and-people question retrieves camera, relationship, and person-specific evidence without importing unrelated golden-hour facts.
 
-The app compares narrators on the same evidence. This exposed an important product truth: better language synthesis does not repair missing or incorrectly selected evidence.
+### The D700 years were partially identity-blind
 
-## The most important course corrections
+The D700 years contain many detected faces but almost no named identities:
 
-### The insight graph was initially too coarse
+- 15,251 HDD photographs with detected faces;
+- zero native HDD name labels before identity bridging;
+- only sparse high-confidence cross-source name matches using experimental generic feature prints.
 
-The first graph had 126 nodes even after the archive grew dramatically. A test with finer year buckets produced 461 nodes from the same photographs, proving that node count was controlled by era granularity rather than archive richness.
+I added face-level persistence and anonymous recurrence clustering. The current pass contains **871 anonymous recurring-person clusters** and **10,384 assigned face observations**.
 
-But finer slicing made answers worse: the narration budget filled with redundant yearly fragments. The right lesson was not “add more nodes.” It was “add meaningful dimensions and protect the selection budget.”
+That lets the system say:
 
-### The narrator was not always the problem
+> People were central during this period, and recurring unnamed people appear throughout it.
 
-Several bad answers were caused by retrieval:
-
-- a color question pulled a golden-hour person node because both used the word “warm”;
-- a camera-and-people question pulled a golden-hour friend-of-family node because it shared a generic `people` tag;
-- an era-style question omitted human context because style nodes consumed the entire selection budget.
-
-The fixes were retrieval boundaries, topic-specific filtering, and reserved human-context slots—not more poetic prompts.
-
-### D700 identity coverage was a real blind spot
-
-The D700 period contains many detected faces but almost no named identities:
-
-- 15,251 HDD photos with detected faces;
-- zero HDD photos with native named identities before identity bridging;
-- only sparse cross-source named matches using experimental generic feature prints.
-
-The system now persists face observations and clusters recurring anonymous faces. It has **871 anonymous recurring-person clusters** and **10,384 assigned face observations**. It can say that recurring unnamed people are present without pretending to know who they are.
-
-The system now distinguishes:
-
-> “People were central during this period.”
-
-from:
-
-> “This named person was definitely the center of that period.”
-
-That distinction materially improved the 2010s answer.
+It does not pretend that every unnamed face is a known family member.
 
 ### Golden-hour lift was not the same as frequency
 
-The first golden-hour person rule promoted people with a high relative lift even when they appeared in only a handful of frames. That made a friend's wife from one trip compete with the people who appeared hundreds of times.
+The first golden-hour person rule promoted a person with a high relative lift even when that person appeared in only a handful of frames. That made a one-trip connection compete with people who appeared hundreds of times.
 
-The fix added a frequency-ranked golden-hour node and raised support requirements for individual lift claims. The current frequency evidence identifies the people who actually occur most often, while low-count relative lifts no longer dominate.
+I changed the graph to promote frequency separately from relative lift. The current golden-hour frequency observation names the people who actually occur most often, while low-support lift effects no longer become the headline.
 
-### The camera data existed before the camera nodes did
+### Camera data existed before camera insights
 
-The system always stored camera make and model, but the graph initially had no camera dimension. This led to the false narrator statement that the system did not know which photographs came from an iPhone or DSLR.
+Camera make and model were stored from the beginning, but the graph had no camera dimension. That produced a false narrator disclaimer: the system knew the camera data, but had not promoted it into retrievable evidence.
 
-The graph now promotes camera families, camera models, camera-by-era patterns, camera-by-subject patterns, and iPhone-versus-DSLR comparisons.
+The graph now compares iPhone and DSLR behavior, promotes common camera bodies, and connects camera family to subjects and people.
 
-## What was measured
+### Depth of field was stored indirectly before it became visible
 
-The project ran a pre-registered dispatch holdout exercise, but the result was not promoted into a success claim or used to retune the final weights. The pooled ranking lift was above random control but below the pre-registered PASS bar, so it remained inconclusive. The feelings-label test was not informative.
+Aperture and focal length were already stored and were used by the quadrant router, but there were no explicit depth-of-field or bokeh nodes. I added a labeled optical proxy:
 
-That outcome was useful as a product lesson: measurement should not be used as decoration. If a test does not establish a conclusion, the product should say so.
+> wide aperture plus normal/long focal length can create bokeh-friendly conditions.
 
-The full-library expansion did establish useful engineering outcomes:
+That is deliberately not described as a direct measurement of rendered background blur.
 
-- taste-model held-out AUC improved from 0.831 to 0.853;
-- the archive grew from 9,639 to 55,771 canonical photos;
-- identity recurrence became measurable;
-- camera, depth, lens, location coverage, travel, and resonance insights became possible.
+## Identity and recurrence
 
-## Privacy and safety decisions
+The named gallery uses local Apple Photos derivatives and authoritative Apple Photos names. Generic Vision feature prints are treated conservatively because they are not a dedicated face-recognition model.
 
-- Photos never leave the Mac.
-- Photos Library masters are never opened.
-- Local derivatives are the only Library image source.
-- Full-resolution photos are never copied into the project.
-- Hidden photos are excluded from dispatch, identity gallery construction, and anonymous clustering.
-- A name below the recognition threshold remains unnamed.
-- Anonymous clusters never become invented human names.
-- The graph preserves unweighted historical truth separately from resonance.
-- Hosted narrators receive grounded text, not pixels.
+Unmatched face vectors are clustered locally. Anonymous clusters never become invented human names. Hidden photos are excluded before gallery and clustering work.
 
-## What V1 is—and is not
+This is one of the most valuable parts of the system: even when identity is unavailable, recurrence can still reveal that the same human presence appears repeatedly.
 
-V1 is a working local-first research product for one archive. It has:
+## Narration
 
-- ingest and clutter filtering;
-- burst/keyframe reduction;
-- optics, light, geometry, scene, face, and identity signals;
-- resonance ranking and daily dispatch;
+The reflection app compares Apple Foundation Models and the local Claude CLI using the same selected evidence. This made the difference between retrieval quality and narrator quality visible.
+
+A stronger narrator cannot repair missing evidence. Conversely, once the evidence is correct, the difference between models becomes a question of synthesis, tone, and emotional precision.
+
+The narrator also has a grounding verifier. It rejects prose that invents names or introduces unsupported terms. One bug surfaced when camera names such as “Nikon,” “iPhone,” and “Pro” were mistaken for invented people; the verifier was updated to allow terms present in grounded camera claims.
+
+## What V1 contains
+
+- local HDD and Photos Library ingest;
+- utility-image rejection;
+- burst grouping and canonical keyframe election;
+- optics, light, geometry, scene, sharpness, and face measurements;
+- named identity attempts and anonymous recurrence clustering;
+- five-quadrant soft scoring;
+- resonance ranking and local daily dispatch;
 - a persisted insight graph;
-- local narrator comparison;
-- anonymous recurrence clustering;
+- camera, lens, depth, travel, light, landscape, people, and relationship insights;
+- Apple Foundation Models and local Claude narrator adapters;
 - a Streamlit reflection app;
-- local privacy and egress guardrails.
+- loopback-only viewing and local privacy guardrails.
 
-V1 is not yet a polished downloadable product for arbitrary friends. It still has:
+The final V1 state has **357 passing tests** and a clean publish check.
 
-- no tuning panel for personal weights;
-- no per-person hard exclusions or soft weights;
-- no friend-ready setup wizard;
-- experimental generic Vision feature-print identity matching;
-- unresolved place names because reverse geocoding is intentionally not performed;
-- a database larger than the original 100 MB target after adding face-level persistence.
+## Current limits
 
-## V2 product brief
+- Generic Vision face embeddings remain experimental.
+- Per-person weights and hard exclusions are not yet implemented.
+- Per-camera and per-subject tuning is not yet implemented.
+- Place names are not reverse-geocoded; the system only reports local geographic coverage unless names are already available.
+- Face-level persistence expanded the database to roughly 120 MB, above the original 100 MB target.
+- The system works on my Mac but is not yet a polished first-run experience for another person.
 
-V2 should turn the one-archive research system into a configurable personal memory product.
+## Next version
 
-### Personal tuning
+The next version should focus on making the system personal and portable:
 
-Provide a local tuning panel for:
+- local controls for per-person weights and exclusions;
+- camera, subject, place, and technical-construct weights;
+- a setup wizard for Photos permissions, owner identity, cameras, eras, and privacy;
+- better face-specific identity calibration;
+- friend-ready source discovery and resumable setup;
+- smaller database and sidecar formats;
+- clearer explanations of uncertainty and data coverage.
 
-- Q1–Q5 quadrant weights;
-- per-person soft weights;
-- hard person exclusions;
-- camera-family/model weights;
-- subject weights;
-- place and travel controls;
-- bokeh, sharpness, negative-space, and candidness preferences.
-
-Tuning must affect dispatch and resonance, not erase historical facts from the graph.
-
-### Setup for a friend’s Mac
-
-A new user should be able to:
-
-1. install the package;
-2. run a doctor/setup flow;
-3. select their Photos Library and external archive roots;
-4. grant Full Disk Access with clear instructions;
-5. identify themselves among Apple Photos named faces;
-6. confirm cameras and crop factors;
-7. review clutter detections;
-8. configure Hidden albums and exclusions;
-9. build a local named gallery;
-10. run identity and anonymous recurrence calibration;
-11. generate the graph;
-12. choose Apple Foundation Models as the default narrator.
-
-Personal paths, names, eras, roles, weights, exclusions, and derived data must stay in gitignored local configuration.
-
-### V2 product principle
-
-The system should learn a user’s resurfacing preferences without pretending that those preferences are universal truth. The archive tells the historical story. The personal tuning layer decides what deserves attention today.
-
-## Product-management takeaway
-
-The most important work was not adding more AI. It was deciding where the AI was allowed to speak, what evidence it could use, how uncertainty was expressed, and when a plausible answer had to be rejected.
-
-The system became more useful every time a fluent answer was treated as a bug report rather than a success.
+The guiding rule stays the same: the archive records what happened; personal tuning decides what deserves attention today.
