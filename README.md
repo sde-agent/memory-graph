@@ -41,10 +41,22 @@ The system is intentionally honest about limits. Generic Vision face embeddings 
 
 ## Install
 
+From a fresh clone:
+
 ```bash
+git clone https://github.com/sde-agent/memory-graph.git
+cd memory-graph
 make setup
+source .venv/bin/activate
 make init
-make doctor
+memory-graph doctor
+```
+
+`make setup` creates and installs into `.venv`; it cannot activate that environment in your parent shell. If you do not want to activate it, prefix every command with `.venv/bin/`, for example:
+
+```bash
+.venv/bin/memory-graph doctor
+.venv/bin/memory-graph graph
 ```
 
 The setup command is the only networked step. It installs the local Python package and development dependencies.
@@ -70,24 +82,36 @@ The external HDD root is passed as a command-line argument rather than committed
 memory-graph ingest-hdd "/Volumes/YourDrive/Photos"
 ```
 
-## Build the local graph
+## Build from Apple Photos (default)
 
-For an existing local archive cache or a bounded tuning run:
+An external HDD is optional. The normal first run uses the macOS Photos Library and local derivatives only:
 
 ```bash
-MEMORY_GRAPH_ARCHIVE_CACHE=/path/to/archive-cache \
-  memory-graph sample-run --target 10000
-
+memory-graph sample-run --all
 memory-graph graph
 ```
 
-For a direct HDD folder analysis:
+This scans the complete Photos Library metadata pool, deduplicates bursts and cross-source duplicates, rejects utility images, analyzes every surviving canonical photo, and writes the local graph. `--all` means all canonical survivors; it does not create one row for every burst member or duplicate asset.
+
+The Photos Library requires Full Disk Access for the terminal. If the run is interrupted, repeat the command; the analysis is resumable and existing photo IDs are skipped.
+
+The runner reports the Library total, cheap rejections, canonical count, Vision rejections, and final database count. This makes coverage auditable instead of silently claiming that every asset became a separate graph row.
+
+## Optional external HDD
+
+If you also have an external archive, pass its root explicitly. The HDD is not required for Apple Photos-only users:
 
 ```bash
 memory-graph analyze-hdd "/Volumes/YourDrive/Photos"
 ```
 
-The current V1 sample runner uses the local archive-cache path for efficient resumable analysis. A friend-ready source-discovery and setup wizard is planned for V2.
+For the optimized archive-cache workflow, set `MEMORY_GRAPH_ARCHIVE_CACHE` before `sample-run`. Without that environment variable and without an HDD cache, the runner simply uses the Photos Library source.
+
+After adding sources, rebuild the graph:
+
+```bash
+memory-graph graph
+```
 
 ## Identity and recurring people
 

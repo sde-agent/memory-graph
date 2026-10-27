@@ -251,9 +251,10 @@ def _cmd_sample_run(args: argparse.Namespace) -> int:
     )
 
     # 3. Stratified sample across (era x source).
-    plan = plan_grid(canonicals, cfg.eras, args.target)
+    target = len(canonicals) if args.all else args.target
+    plan = plan_grid(canonicals, cfg.eras, target)
     print(plan.report())
-    sample = stratified_sample(canonicals, cfg.eras, args.target, seed=cfg.dispatch.seed)
+    sample = stratified_sample(canonicals, cfg.eras, target, seed=cfg.dispatch.seed)
     print(f"sampled {len(sample)}")
 
     # 4. Optics top-up for sampled HDD photos (batched read off the read-only drive).
@@ -868,8 +869,10 @@ def main(argv: list[str] | None = None) -> int:
     ask = sub.add_parser("ask", help="ask a free-form question about your photography")
     ask.add_argument("question", help="e.g. 'how has my photography changed?'")
 
-    sr = sub.add_parser("sample-run", help="stratified tuning run across both sources")
+    sr = sub.add_parser("sample-run", help="analyze a stratified sample or the full canonical pool")
     sr.add_argument("--target", type=int, default=10000, help="sample size (default 10000)")
+    sr.add_argument("--all", action="store_true",
+                    help="analyze every canonical photo in the local pool")
     sr.add_argument("--hdd-only", action="store_true", help="skip the Library source")
     sr.add_argument("--no-vision", action="store_true", help="skip Apple Vision (faster)")
 
