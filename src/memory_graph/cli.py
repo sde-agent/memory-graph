@@ -228,9 +228,19 @@ def _cmd_sample_run(args: argparse.Namespace) -> int:
         from memory_graph.ingest.library import build_pool_parallel as lib_build_parallel
 
         workers = min(8, (os.cpu_count() or 4))
-        lib_kept, lib_rej, lib_total = lib_build_parallel(
-            cfg, lambda c: not classify_clutter(c, cfg, cheap_only=True).any, workers=workers
-        )
+        try:
+            lib_kept, lib_rej, lib_total = lib_build_parallel(
+                cfg,
+                lambda c: not classify_clutter(c, cfg, cheap_only=True).any,
+                workers=workers,
+                dbfile=args.dbfile,
+            )
+        except FileNotFoundError as exc:
+            print("Photos Library database not found.")
+            print("Open Photos once, set the intended library as System Photo Library, "
+                  "grant Full Disk Access to Terminal, or pass --dbfile to its database.")
+            print(f"details: {exc}")
+            return 1
         pool.extend(lib_kept)
         print(
             f"Library ({workers} workers): {len(lib_kept)} kept, {lib_rej} cheap-rejected "
@@ -873,6 +883,8 @@ def main(argv: list[str] | None = None) -> int:
     sr.add_argument("--target", type=int, default=10000, help="sample size (default 10000)")
     sr.add_argument("--all", action="store_true",
                     help="analyze every canonical photo in the local pool")
+    sr.add_argument("--dbfile", default=None,
+                    help="Photos database path when the library is not the default one")
     sr.add_argument("--hdd-only", action="store_true", help="skip the Library source")
     sr.add_argument("--no-vision", action="store_true", help="skip Apple Vision (faster)")
 

@@ -113,6 +113,23 @@ This scans the complete Photos Library metadata pool, deduplicates bursts and cr
 
 The Photos Library requires Full Disk Access for the terminal. If the run is interrupted, repeat the command; the analysis is resumable and existing photo IDs are skipped.
 
+If you see `FileNotFoundError: Could not get path to photo library database`:
+
+1. Open the Photos app once and confirm the library opens.
+2. In Photos, use **Settings → General → Use as System Photo Library** if that option is available.
+3. In **System Settings → Privacy & Security → Full Disk Access**, enable your terminal app and restart the terminal.
+4. If the library is stored somewhere non-default, pass its database path explicitly:
+
+```bash
+memory-graph sample-run --all --dbfile "/path/to/Photos.sqlite"
+```
+
+You can test library discovery before a full run:
+
+```bash
+memory-graph ingest-library --limit 1
+```
+
 The runner reports the Library total, cheap rejections, canonical count, Vision rejections, and final database count. This makes coverage auditable instead of silently claiming that every asset became a separate graph row.
 
 ## Optional external HDD
