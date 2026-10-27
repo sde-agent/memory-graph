@@ -78,8 +78,8 @@ def main() -> int:
         print("  Refusing to pass without a denylist — add one before publishing.")
         return 2
 
-    # Match each denied string on WORD BOUNDARIES so a short name ("Riti") flags the
-    # name but not the substring inside ordinary words ("c-riti-que", "c-riti-cal"). The
+    # Match each denied string on WORD BOUNDARIES so a short name ("Ada") flags the
+    # name but not the substring inside ordinary words ("candidate", "radical"). The
     # match is case-insensitive. This keeps the guard strict about identities without
     # drowning in false alarms that would train the user to ignore it.
     patterns = [(d, re.compile(rf"\b{re.escape(d)}\b", re.IGNORECASE)) for d in deny]
