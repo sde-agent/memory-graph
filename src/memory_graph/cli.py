@@ -17,6 +17,21 @@ from memory_graph import __version__
 from memory_graph.netguard import block_network
 
 
+def _progress(label: str, completed: int, total: int) -> None:
+    """Render compact TTY progress or durable log lines when stdout is redirected."""
+    total = max(1, total)
+    pct = min(100, int(completed * 100 / total))
+    if sys.stdout.isatty():
+        width = 24
+        filled = int(width * pct / 100)
+        bar = "#" * filled + "." * (width - filled)
+        print(f"\r{label}: [{bar}] {pct:3d}% ({completed}/{total})", end="", flush=True)
+        if completed >= total:
+            print()
+    else:
+        print(f"{label}: {pct}% ({completed}/{total})", flush=True)
+
+
 def _cmd_init(_args: argparse.Namespace) -> int:
     from memory_graph.db import connect, init_db
 
@@ -206,6 +221,10 @@ def _cmd_sample_run(args: argparse.Namespace) -> int:
     from memory_graph.scoring.taste import TasteModel
 
     cfg = load_config()
+    if args.all:
+        print("sample-run: full canonical analysis selected; this can take a while.")
+    else:
+        print(f"sample-run: analyzing up to {args.target} canonical photos; this can take a while.")
 
     # 1. Gather the pool from both sources with the CHEAP rejection gate only (no Vision)
     #    — so we never run Vision on the ~50k we will sample away. For memory, keep the
@@ -213,6 +232,7 @@ def _cmd_sample_run(args: argparse.Namespace) -> int:
     #    few; but since previews are cheap we keep thumbs and release rejected ones.
     pool = []
     if cache_available():
+        print("sample-run: scanning the local HDD cache (parallel cheap filter)...")
         from memory_graph.ingest.archive_cache import build_pool_parallel
 
         workers = min(8, (os.cpu_count() or 4))
@@ -225,6 +245,10 @@ def _cmd_sample_run(args: argparse.Namespace) -> int:
         print("HDD cache not found; skipping HDD source.")
 
     if not args.hdd_only:
+        print(
+            "sample-run: scanning the Photos Library metadata and local derivatives; "
+            "this can take a while..."
+        )
         from memory_graph.ingest.library import build_pool_parallel as lib_build_parallel
 
         workers = min(8, (os.cpu_count() or 4))
@@ -252,6 +276,7 @@ def _cmd_sample_run(args: argparse.Namespace) -> int:
 
     # 2. Dedup: burst-collapse time-adjacent frames, THEN a global near-duplicate pass
     #    that merges pHash-duplicates across time/source (catches the dupes that leaked).
+    print("sample-run: collapsing bursts and global duplicates; this can take a while...")
     from memory_graph.cluster.bursts import global_dedup
 
     shots = cluster_and_elect(pool, cfg)
@@ -272,6 +297,10 @@ def _cmd_sample_run(args: argparse.Namespace) -> int:
 
     # 4. Optics top-up for sampled HDD photos (batched read off the read-only drive).
     hdd_sample = [c for c in sample if c.source.value == "hdd"]
+    print(
+        "sample-run: reading optics for "
+        f"{len(hdd_sample)} HDD samples; this can take a while..."
+    )
     topped = top_up_optics(hdd_sample)
     print(f"optics top-up: {topped}/{len(hdd_sample)} HDD photos")
 
@@ -286,6 +315,10 @@ def _cmd_sample_run(args: argparse.Namespace) -> int:
 
     done = photo_ids(conn)
     n = vision_rej = 0
+    print(
+        f"sample-run: Vision analysis starting for {len(sample)} canonical photos; "
+        "this can take a while..."
+    )
     for cand in sample:
         if cand.id in done:
             continue
@@ -302,7 +335,7 @@ def _cmd_sample_run(args: argparse.Namespace) -> int:
         n += 1
         if n % 500 == 0:
             conn.commit()
-            print(f"  analyzed {n}...")
+            _progress("sample-run: Vision analysis", n, len(sample))
     conn.commit()
     total = count_photos(conn)
     conn.close()
@@ -653,7 +686,9 @@ def _cmd_graph(_args: argparse.Namespace) -> int:
     # Clear the FULL known kind sets (not just kinds produced this run) so a kind that
     # stops being emitted — e.g. resonance_gap when no era's top flips — leaves no stale
     # rows behind.
-    nodes = generate_graph(rows, cfg.eras, owner=cfg.owner)
+    print("graph: rebuilding grounded insight nodes; this can take a while...")
+    nodes = generate_graph(rows, cfg.eras, owner=cfg.owner,
+                           progress=lambda label, done, total: _progress(label, done, total))
     crit_nodes = critique(rows, cfg.eras)
     replace_insights_of_kinds(conn, nodes, GRAPH_KINDS)
     replace_insights_of_kinds(conn, crit_nodes, CRITIQUE_KINDS)

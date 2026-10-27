@@ -145,6 +145,8 @@ memory-graph sample-run --all --dbfile "/path/to/photos.sqlite"
 
 The HDD is optional. `--dbfile` is only needed for a non-default Photos Library location.
 
+The commands print a progress bar/phase status for pool scanning, deduplication, optics, Vision analysis, and graph generation. A full Photos Library run can take a while; leave the terminal open and repeat the command if interrupted.
+
 The runner reports the Library total, cheap rejections, canonical count, Vision rejections, and final database count. This makes coverage auditable instead of silently claiming that every asset became a separate graph row.
 
 ## Optional external HDD

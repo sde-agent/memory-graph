@@ -88,7 +88,7 @@ _SUBJECT_TAGS = ("subject", "what", "photograph", "shoot", "things", "about", "t
 
 def generate_graph(
     rows: list[dict], eras: ErasCfg, *, owner: OwnerCfg | None = None,
-    now: float | None = None,
+    now: float | None = None, progress=None,
 ) -> list[Insight]:
     """Return insight nodes spanning every dimension we can compute.
 
@@ -117,10 +117,17 @@ def generate_graph(
             by_era.setdefault(e, []).append(r)
     buckets = [("overall", canon)] + [(er.label, by_era[er.label])
                                       for er in eras.ranges if er.label in by_era]
+    buckets = [(scope, rs) for scope, rs in buckets if rs]
+    total_steps = len(buckets) + 8
+    step = 0
+
+    def tick(label: str) -> None:
+        nonlocal step
+        step += 1
+        if progress is not None:
+            progress(label, step, total_steps)
 
     for scope, rs in buckets:
-        if not rs:
-            continue
         n = len(rs)
         era = None if scope == "overall" else scope
         where = "across your photographs" if scope == "overall" else f"in the {scope}"
@@ -137,15 +144,24 @@ def generate_graph(
         _anonymous_people_nodes(add, scope, era, where, rs, n)
         _subject_nodes(add, scope, era, where, rs, n)
         _quadrant_nodes(add, scope, era, where, rs, n)
+        tick(f"graph: {scope}")
 
     _change_nodes(add, by_era, eras)
+    tick("graph: changes")
     _relationship_nodes(add, canon, by_era, eras, created, owner)
+    tick("graph: relationships")
     _signature_nodes(add, canon, created, owner)
+    tick("graph: signatures")
     _golden_conjunction_nodes(add, canon, created, owner)
+    tick("graph: golden-hour relationships")
     _self_presence_nodes(add, canon, by_era, eras, owner)
+    tick("graph: self-presence")
     _unknown_trend_nodes(add, by_era, eras)
+    tick("graph: identity coverage")
     _camera_nodes(add, canon)
+    tick("graph: camera patterns")
     _promotion_aggregate_nodes(add, canon, by_era, owner)
+    tick("graph: resonance and context")
     return out
 
 
