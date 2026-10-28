@@ -439,8 +439,9 @@ def _find_claude() -> str | None:
     if found:
         return found
     home = Path.home()
-    for cand in (home / ".local/bin/claude", Path("/opt/homebrew/bin/claude"),
-                 Path("/usr/local/bin/claude"), home / "bin/claude"):
+    for cand in (home / ".local/bin/claude", home / ".claude/local/claude",
+                 Path("/opt/homebrew/bin/claude"), Path("/usr/local/bin/claude"),
+                 home / "bin/claude"):
         if cand.is_file() and os.access(cand, os.X_OK):
             return str(cand)
     return None

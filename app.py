@@ -102,6 +102,13 @@ def main() -> None:
         options["Apple Foundation Models (on-device)"] = fm
     if claude is not None:
         options["Claude (local CLI)"] = claude
+    if claude is None:
+        st.info(
+            "Claude is not currently detected. In the same terminal, run "
+            "`command -v claude`. If it prints a path, run "
+            "`export MEMORY_GRAPH_CLAUDE_BIN=\"$(command -v claude)\"` and restart "
+            "with `make app`. If it prints nothing, install/authenticate the Claude CLI first."
+        )
     if not options:
         st.error(
             "No narrator available. Install the Foundation Models helper (macOS 26+) or "

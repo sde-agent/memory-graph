@@ -219,7 +219,23 @@ claude --version
 make app
 ```
 
-If Claude is installed somewhere outside `PATH`, set its path before launching:
+If Claude does not appear in the narrator picker:
+
+```bash
+command -v claude
+claude --version
+```
+
+If the first command prints a path, launch the app from the same shell:
+
+```bash
+export MEMORY_GRAPH_CLAUDE_BIN="$(command -v claude)"
+make app
+```
+
+If it prints nothing, the Claude CLI is not installed or is not on `PATH`. If Claude was installed while Streamlit was already running, stop and restart `make app`; narrator backends are cached for the app session. The app now shows this diagnostic message when Claude is not detected.
+
+If Claude is installed at a known custom path, you can also use:
 
 ```bash
 export MEMORY_GRAPH_CLAUDE_BIN="/path/to/claude"
