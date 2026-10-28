@@ -39,6 +39,7 @@ from memory_graph.narration.llm import make_backend, narrate_answer
 from memory_graph.paths import TASTE_MODEL_PATH
 from memory_graph.pipeline import rescorable, rescore_row
 from memory_graph.scoring.dispatch import select_dispatch
+from memory_graph.scoring.taste import taste_model_status
 
 
 @st.cache_resource
@@ -146,11 +147,15 @@ def _tuning_panel(cfg, rows) -> None:
                                float(cfg.resonance_modifiers.candid_bonus), 0.05)
             posed = st.slider("Posed penalty", 0.0, 2.0,
                               float(cfg.resonance_modifiers.posed_penalty), 0.05)
-            taste_available = TASTE_MODEL_PATH.is_file()
-            st.caption(
-                "Archive-specific Favorite-trained model: "
-                + ("available" if taste_available else "not available")
+            taste_meta = taste_model_status()
+            taste_available = TASTE_MODEL_PATH.is_file() and not (
+                taste_meta and taste_meta.get("status") == "stale"
             )
+            if taste_meta and taste_meta.get("status") == "stale":
+                taste_status = "stale — retraining required"
+            else:
+                taste_status = "available" if taste_available else "not available"
+            st.caption("Archive-specific Favorite-trained model: " + taste_status)
             use_taste = st.checkbox(
                 "Use learned taste model",
                 value=taste_available and cfg.resonance_modifiers.taste_weight > 0,

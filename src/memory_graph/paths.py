@@ -30,6 +30,7 @@ DB_PATH: Path = DATA_DIR / "memory_graph.db"
 CACHE_DIR: Path = DATA_DIR / "cache"
 GALLERY_DIR: Path = DATA_DIR / "gallery"
 TASTE_MODEL_PATH: Path = DATA_DIR / "taste" / "model.json"
+TASTE_META_PATH: Path = DATA_DIR / "taste" / "model_meta.json"
 
 
 def ensure_data_dirs() -> None:

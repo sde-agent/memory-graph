@@ -20,15 +20,58 @@ multiplier around 1.0.
 
 from __future__ import annotations
 
+import hashlib
+import json
 from dataclasses import dataclass
+from pathlib import Path
+from typing import Any
 
 import numpy as np
+
+from memory_graph.paths import TASTE_META_PATH
 
 
 def _normalize(vecs: np.ndarray) -> np.ndarray:
     norms = np.linalg.norm(vecs, axis=1, keepdims=True)
     norms[norms == 0] = 1.0
     return vecs / norms
+
+
+
+def privacy_policy_fingerprint(privacy: Any) -> str:
+    """Stable fingerprint of the hard-exclusion policy used by a model."""
+    payload = {
+        "people": sorted(str(v).casefold() for v in privacy.exclude_people),
+        "anonymous_clusters": sorted(str(v) for v in privacy.exclude_anonymous_clusters),
+        "subjects": sorted(str(v).casefold() for v in privacy.exclude_subjects),
+        "camera_models": sorted(str(v).casefold() for v in privacy.exclude_camera_models),
+        "places": sorted(str(v).casefold() for v in privacy.exclude_places),
+    }
+    raw = json.dumps(payload, sort_keys=True, separators=(",", ":")).encode()
+    return hashlib.sha256(raw).hexdigest()[:16]
+
+
+def write_taste_meta(**values: Any) -> None:
+    TASTE_META_PATH.parent.mkdir(parents=True, exist_ok=True)
+    TASTE_META_PATH.write_text(json.dumps(values, indent=2, sort_keys=True) + "\n")
+
+
+def mark_taste_stale(privacy: Any, reason: str = "policy changed") -> None:
+    """Invalidate a personal model without deleting it or touching photo history."""
+    write_taste_meta(
+        status="stale",
+        reason=reason,
+        policy_fingerprint=privacy_policy_fingerprint(privacy),
+    )
+
+
+def taste_model_status() -> dict[str, Any] | None:
+    if not TASTE_META_PATH.is_file():
+        return None
+    try:
+        return json.loads(TASTE_META_PATH.read_text())
+    except (OSError, json.JSONDecodeError):
+        return None
 
 
 @dataclass
@@ -70,7 +113,6 @@ class TasteModel:
 
     def save(self, path) -> None:
         import json
-        from pathlib import Path
 
         p = Path(path)
         p.parent.mkdir(parents=True, exist_ok=True)
@@ -79,10 +121,12 @@ class TasteModel:
     @classmethod
     def load(cls, path) -> TasteModel | None:
         import json
-        from pathlib import Path
 
         p = Path(path)
         if not p.is_file():
+            return None
+        meta = taste_model_status()
+        if meta and meta.get("status") == "stale":
             return None
         try:
             return cls.from_dict(json.loads(p.read_text()))

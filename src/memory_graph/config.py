@@ -186,6 +186,11 @@ class IdentityCfg:
 @dataclass(frozen=True)
 class PrivacyCfg:
     hidden_albums: tuple[str, ...]
+    exclude_people: tuple[str, ...] = ()
+    exclude_anonymous_clusters: tuple[str, ...] = ()
+    exclude_subjects: tuple[str, ...] = ()
+    exclude_camera_models: tuple[str, ...] = ()
+    exclude_places: tuple[str, ...] = ()
 
 
 @dataclass(frozen=True)
@@ -331,6 +336,55 @@ blur_deweight = {modifiers.blur_deweight}
     path.write_text("\n".join(kept).rstrip() + "\n\n" + block)
 
 
+
+
+def save_local_privacy_exclusions(
+    *,
+    people: tuple[str, ...],
+    anonymous_clusters: tuple[str, ...],
+    subjects: tuple[str, ...],
+    camera_models: tuple[str, ...] = (),
+    places: tuple[str, ...] = (),
+) -> None:
+    """Persist local hard dispatch exclusions in the gitignored overlay."""
+    path = LOCAL_CONFIG
+    text = path.read_text() if path.is_file() else ""
+    lines = text.splitlines()
+    kept: list[str] = []
+    skip = False
+    for line in lines:
+        stripped = line.strip()
+        if stripped == "[privacy]":
+            skip = True
+            continue
+        if skip and stripped.startswith("[") and stripped.endswith("]"):
+            skip = False
+        if not skip:
+            kept.append(line)
+    def toml_list(values: tuple[str, ...]) -> str:
+        return "[" + ", ".join(repr(value) for value in values) + "]"
+    block = (
+        "[privacy]\n"
+        "exclude_people = " + toml_list(people) + "\n"
+        "exclude_anonymous_clusters = " + toml_list(anonymous_clusters) + "\n"
+        "exclude_subjects = " + toml_list(subjects) + "\n"
+        "exclude_camera_models = " + toml_list(camera_models) + "\n"
+        "exclude_places = " + toml_list(places) + "\n"
+    )
+    path.write_text("\n".join(kept).rstrip() + "\n\n" + block)
+    from memory_graph.scoring.taste import mark_taste_stale
+
+    mark_taste_stale(
+        PrivacyCfg(
+            hidden_albums=(), exclude_people=people,
+            exclude_anonymous_clusters=anonymous_clusters,
+            exclude_subjects=subjects, exclude_camera_models=camera_models,
+            exclude_places=places,
+        ),
+        reason="hard exclusion policy changed",
+    )
+
+
 def _build(raw: dict) -> Config:
     framing = raw["framing"]
     res = raw["resonance"]
@@ -360,7 +414,16 @@ def _build(raw: dict) -> Config:
         ),
         faces=FacesCfg(**raw["faces"]),
         identity=IdentityCfg(**raw["identity"]),
-        privacy=PrivacyCfg(hidden_albums=tuple(raw["privacy"]["hidden_albums"])),
+        privacy=PrivacyCfg(
+            hidden_albums=tuple(raw["privacy"]["hidden_albums"]),
+            exclude_people=tuple(raw["privacy"].get("exclude_people", [])),
+            exclude_anonymous_clusters=tuple(
+                raw["privacy"].get("exclude_anonymous_clusters", [])
+            ),
+            exclude_subjects=tuple(raw["privacy"].get("exclude_subjects", [])),
+            exclude_camera_models=tuple(raw["privacy"].get("exclude_camera_models", [])),
+            exclude_places=tuple(raw["privacy"].get("exclude_places", [])),
+        ),
         owner=OwnerCfg(self_names=tuple(raw.get("owner", {}).get("self_names", []))),
         eras=ErasCfg(
             ranges=tuple(
