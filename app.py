@@ -21,6 +21,7 @@ Run:  make app   (or: streamlit run app.py)
 
 from __future__ import annotations
 
+import json
 import time
 from dataclasses import replace
 from pathlib import Path
@@ -29,11 +30,13 @@ import streamlit as st
 
 from memory_graph.config import (
     load_config,
+    save_local_privacy_exclusions,
     save_local_resonance_profile,
 )
 from memory_graph.db import all_canonical_rows, connect, get_insights
 from memory_graph.narration.ask import select_nodes
 from memory_graph.narration.llm import make_backend, narrate_answer
+from memory_graph.paths import TASTE_MODEL_PATH
 from memory_graph.pipeline import rescorable, rescore_row
 from memory_graph.scoring.dispatch import select_dispatch
 
@@ -99,7 +102,8 @@ def _tuned_dispatch(rows, cfg, weights, modifiers):
         if rescorable(copy):
             copy.update(rescore_row(copy, tuned_cfg))
         preview_rows.append(copy)
-    return select_dispatch(preview_rows, cfg.dispatch, now=time.time(), n=3)
+    return select_dispatch(preview_rows, cfg.dispatch, now=time.time(), n=3,
+                           privacy=cfg.privacy)
 
 
 def _render_dispatch_preview(title: str, items, rows_by_id: dict[str, dict]) -> None:
@@ -142,6 +146,18 @@ def _tuning_panel(cfg, rows) -> None:
                                float(cfg.resonance_modifiers.candid_bonus), 0.05)
             posed = st.slider("Posed penalty", 0.0, 2.0,
                               float(cfg.resonance_modifiers.posed_penalty), 0.05)
+            taste_available = TASTE_MODEL_PATH.is_file()
+            st.caption(
+                "Archive-specific Favorite-trained model: "
+                + ("available" if taste_available else "not available")
+            )
+            use_taste = st.checkbox(
+                "Use learned taste model",
+                value=taste_available and cfg.resonance_modifiers.taste_weight > 0,
+                disabled=not taste_available,
+                help=("Turn off to isolate manual resonance controls from "
+                      "Favorite-trained behavior."),
+            )
             preview = st.form_submit_button("Preview top 3")
         if preview:
             weights = replace(cfg.resonance_weights, **q)
@@ -153,13 +169,15 @@ def _tuning_panel(cfg, rows) -> None:
                 quadrant_weight=quadrant,
                 candid_bonus=candid,
                 posed_penalty=posed,
+                taste_weight=1.0 if use_taste else 0.0,
             )
             st.session_state["tuning_profile"] = (weights, modifiers)
         profile = st.session_state.get("tuning_profile")
         if profile:
             weights, modifiers = profile
             st.divider()
-            before = select_dispatch(rows, cfg.dispatch, now=time.time(), n=3)
+            before = select_dispatch(rows, cfg.dispatch, now=time.time(), n=3,
+                                     privacy=cfg.privacy)
             after = _tuned_dispatch(rows, cfg, weights, modifiers)
             rows_by_id = {row["id"]: row for row in rows}
             _render_dispatch_preview("Current V1 top 3", before, rows_by_id)
@@ -169,7 +187,46 @@ def _tuning_panel(cfg, rows) -> None:
                 st.cache_resource.clear()
                 st.success("Saved to local config.local.toml")
                 st.rerun()
-            st.caption("Taste-model influence is intentionally not a Stage 1 control.")
+            st.caption(
+                "Taste model is archive-specific; disabling it is useful for clean weight "
+                "experiments and does not delete the model."
+            )
+
+        with st.expander("Hard exclusions", expanded=False):
+            people = sorted({
+                str(name)
+                for row in rows
+                for name in (
+                    json.loads(row.get("person_names") or "[]")
+                    if isinstance(row.get("person_names"), str)
+                    else (row.get("person_names") or [])
+                )
+                if name
+            })
+            subjects = ["children", "nature", "water", "animals", "food", "travel", "celebration"]
+            selected_people = st.multiselect(
+                "People never surfaced in dispatch", people,
+                default=list(cfg.privacy.exclude_people),
+            )
+            selected_subjects = st.multiselect(
+                "Subjects never surfaced in dispatch", subjects,
+                default=list(cfg.privacy.exclude_subjects),
+            )
+            clusters_text = st.text_input(
+                "Anonymous cluster IDs (comma-separated)",
+                value=", ".join(cfg.privacy.exclude_anonymous_clusters),
+            )
+            if st.button("Save hard exclusions"):
+                clusters = tuple(x.strip() for x in clusters_text.split(",") if x.strip())
+                save_local_privacy_exclusions(
+                    people=tuple(selected_people), anonymous_clusters=clusters,
+                    subjects=tuple(selected_subjects),
+                    camera_models=cfg.privacy.exclude_camera_models,
+                    places=cfg.privacy.exclude_places,
+                )
+                st.cache_resource.clear()
+                st.success("Saved to local config.local.toml")
+                st.rerun()
 
 
 def main() -> None:
