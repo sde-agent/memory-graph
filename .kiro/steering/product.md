@@ -193,16 +193,12 @@ The engine is built in versions. Decisions made NOW must not foreclose later one
   product surface — doing so hides whether the graph is rich enough and breaks for anyone
   without that local model. Grounding (no invented names, no reversed directions) travels
   with the notes, so honesty is narrator-independent.
-- **Portable default narrator:** Apple Foundation Models (on-device / Private Cloud
-  Compute), invoked via an arm's-length helper process. Carries cleanly into V2 and V3.
-- **Dev-console convenience only (author):** headless `claude -p` may pre-write prose for
-  the local `memory-graph ask` CLI during development. It is NOT part of the MCP product
-  surface and the product must NOT depend on it.
-- **V2 premium narrator (deferred):** Apple's larger Private Cloud Compute server model
-  (`PrivateCloudComputeLanguageModel`, same Foundation Models framework, privacy-
-  preserving). Code path is built but needs a code-signed, entitled app to run — so it's
-  a V2 packaging milestone, not a V1 dependency. Tiers: on-device (free/local) -> PCC
-  (Apple-native premium, still zero third-party egress) -> Claude (opt-in power user).
+- **Portable default narrator:** Apple Foundation Models on-device, invoked via an arm's-length
+  helper process. It requires no API key and keeps the text transformation local.
+- **Optional Claude narrator:** users who already have the Claude CLI installed and
+  authenticated can select it in the local reflection app or use it through the CLI
+  adapter. It receives grounded text notes only; photo pixels never leave the Mac through
+  the engine. Claude is optional, not a required dependency.
 - **Heavier local fallback:** an MLX-served small model if Foundation Models prove
   too constrained for synthesis.
 

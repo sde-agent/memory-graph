@@ -4,9 +4,8 @@
 // STDOUT. Keeps the LLM call out-of-process (the Python engine shells out to this), so
 // the portable narrator is swappable and the engine never links a Swift framework.
 //
-// Local-first / zero-egress: Foundation Models runs ON DEVICE (or Apple's Private Cloud
-// Compute) — no third-party egress, no API key. Exactly the V2 ideal: a standalone app
-// that needs no Claude, no OpenAI, no network.
+// Local-first / zero-egress: Foundation Models runs ON DEVICE — no third-party egress,
+// no API key. Claude is a separate optional narrator invoked through the local CLI.
 //
 // Build:  swiftc -O -o foundation_narrate foundation_narrate.swift
 // Usage:  echo "PROMPT" | ./foundation_narrate
@@ -26,37 +25,20 @@ func run() async -> Int32 {
         return 2
     }
 
-    // Tier: "pcc" uses the larger Private Cloud Compute server model (privacy-preserving,
-    // higher capability); anything else uses the on-device ~3B model. Chosen by the
-    // first CLI arg so one binary serves both narrator tiers.
-    let usePCC = CommandLine.arguments.dropFirst().first == "pcc"
-
-    let session: LanguageModelSession
-    if usePCC {
-        let pcc = PrivateCloudComputeLanguageModel()
-        if !pcc.isAvailable {
-            FileHandle.standardError.write(
-                "private cloud compute unavailable: \(pcc.availability)\n"
-                    .data(using: .utf8)!)
-            return 2
-        }
-        session = LanguageModelSession(model: pcc)
-    } else {
-        let model = SystemLanguageModel.default
-        switch model.availability {
-        case .available:
-            break
-        case .unavailable(let reason):
-            FileHandle.standardError.write(
-                "on-device model unavailable: \(reason)\n".data(using: .utf8)!)
-            return 2
-        @unknown default:
-            FileHandle.standardError.write("on-device model unavailable\n"
-                .data(using: .utf8)!)
-            return 2
-        }
-        session = LanguageModelSession(model: model)
+    let model = SystemLanguageModel.default
+    switch model.availability {
+    case .available:
+        break
+    case .unavailable(let reason):
+        FileHandle.standardError.write(
+            "on-device model unavailable: \(reason)\n".data(using: .utf8)!)
+        return 2
+    @unknown default:
+        FileHandle.standardError.write("on-device model unavailable\n"
+            .data(using: .utf8)!)
+        return 2
     }
+    let session = LanguageModelSession(model: model)
 
     do {
         // A low temperature keeps the narration grounded and steady (we are not after

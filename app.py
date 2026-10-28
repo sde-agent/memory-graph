@@ -56,8 +56,6 @@ def _answer(question: str, insights, backend, backend_label: str, eras):
     sel = select_nodes(question, insights, eras=eras)
     if not sel.nodes:
         return None, None
-    # The small on-device model gets the tighter 'compact' scaffolding; the larger
-    # models (PCC server model, Claude) get the default prompt that trusts them to weave.
     tier = "compact" if "on-device" in backend_label else "default"
     ans = narrate_answer(question, sel.nodes, backend,
                          target_sentences=sel.target_sentences, tier=tier)
@@ -98,15 +96,10 @@ def main() -> None:
 
     # Which narrators are actually available right now.
     fm = _backend("foundation_models")
-    pcc = _backend("foundation_models_pcc")
     claude = _backend("claude_cli")
     options: dict[str, object] = {}
     if fm is not None:
         options["Apple Foundation Models (on-device)"] = fm
-    if pcc is not None:
-        # Private Cloud Compute (larger Apple server model). Available only from a
-        # signed, entitled app — so in dev this constructs but generation may fall back.
-        options["Apple Foundation Models (Private Cloud Compute)"] = pcc
     if claude is not None:
         options["Claude (local CLI)"] = claude
     if not options:

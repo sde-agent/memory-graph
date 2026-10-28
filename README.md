@@ -204,6 +204,30 @@ Then open `http://127.0.0.1:8501`.
 
 The app supports questions about style, people, eras, cameras, lenses, depth of field, landscapes, light, and memory patterns. Expand the Evidence section when evaluating an answer: if the evidence is wrong, the issue is retrieval or graph generation; if the evidence is right but the prose is weak, the issue is the narrator.
 
+### Narrators
+
+The app supports two narrator choices:
+
+- **Apple Foundation Models (on-device):** the default local narrator on supported macOS versions. No Claude account or API key is required.
+- **Claude (local CLI):** optional. If the `claude` executable is installed and authenticated on your Mac, `make app` detects it and adds it to the narrator picker. The app can compare Apple and Claude on the same grounded evidence.
+
+To use Claude, verify it is available before starting the app:
+
+```bash
+command -v claude
+claude --version
+make app
+```
+
+If Claude is installed somewhere outside `PATH`, set its path before launching:
+
+```bash
+export MEMORY_GRAPH_CLAUDE_BIN="/path/to/claude"
+make app
+```
+
+Claude is not required for the engine. The app sends only grounded text notes to the selected narrator; photo pixels are never sent through the Memory Graph engine. Claude may use its own configured service connection, while Apple Foundation Models stays on-device.
+
 ## Current resonance weights
 
 V1 exposes global resonance settings in `config.toml`:

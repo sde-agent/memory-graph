@@ -970,31 +970,21 @@ it. The swappable-narrator architecture offers BOTH: FM as the honest default, C
 an opt-in upgrade — a stronger story than either alone. 300 tests, lint + publish clean.
 
 ---
-## P. Apple's larger model (Private Cloud Compute) — wired, gated by entitlement
+## P. Narrator scope for V1
 
-The owner noted Apple has a larger model beyond the on-device ~3B and asked if it is
-reachable. Confirmed: Apple ships a Mixture-of-Experts SERVER model on Private Cloud
-Compute (PCC), accessed through the SAME Foundation Models Swift framework — not a public
-web/REST API ([Apple ML Research 2025; WWDC 2026 session 319]). The SDK on this machine
-(macOS 27) exposes it as a first-class `PrivateCloudComputeLanguageModel` with
-`availability`/`isAvailable`/`quotaUsage`, usable via `LanguageModelSession(model:)`.
+V1 supports two narrator paths:
 
-**Why it is the ideal premium narrator for THIS product.** It is the quality step up
-toward Claude-level synthesis WITHOUT a third party, and — critically — PCC is Apple's
-privacy architecture (data processed without retention, not seen by Apple, not used for
-training). For a zero-egress product, a PCC call (text only, never pixels) is a far better
-"server" story than sending text to Anthropic/OpenAI. It slots cleanly into the
-swappable-narrator tiers: on-device (local) -> PCC (Apple-native premium, privacy-safe)
--> Claude (opt-in).
+1. **Apple Foundation Models on-device** — the privacy-first default, invoked through
+   the local Swift helper.
+2. **Claude CLI** — an optional narrator for users who already have the Claude CLI
+   installed and authenticated. It receives grounded text notes only; photo pixels never
+   leave the Mac through this app.
 
-**The catch, found by testing.** The helper was extended (`foundation_narrate.swift pcc`)
-and the `foundation_models_pcc` backend wired. `isAvailable` returned true, but actual
-generation failed with `ModelManagerError 1046` — PCC access requires a CODE-SIGNED,
-ENTITLED app (the `com.apple.developer.foundation-models` PCC entitlement), which an
-ad-hoc `swiftc` command-line binary cannot carry. So PCC is NOT reachable from the dev
-helper, and the backend returns None there (honest fallback). The code path is READY for
-when the engine ships as a signed macOS app — exactly the V2/V3 packaging direction. On
-device FM + Claude remain the two working dev narrators. 300 tests, lint + publish clean.
+A larger Apple server-hosted narrator was investigated but is not part of the shipped
+code or product surface. Keeping the supported choices small makes setup clearer and
+avoids advertising an unavailable entitlement-gated path. The narrator remains swappable:
+the insight graph and grounding checks are the product, while Apple on-device and Claude
+are two available writing engines.
 
 ---
 ## Q. The content dimension — using Vision's scene labels (a critical early miss)

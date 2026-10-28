@@ -416,9 +416,7 @@ def make_backend(cfg_backend: str) -> Backend | None:
     if cfg_backend == "claude_cli":
         return _claude_cli_backend()
     if cfg_backend == "foundation_models":
-        return _foundation_models_backend("device")
-    if cfg_backend == "foundation_models_pcc":
-        return _foundation_models_backend("pcc")
+        return _foundation_models_backend()
     return None
 
 
@@ -472,18 +470,16 @@ def _claude_cli_backend() -> Backend | None:
     return CallableBackend(_run)
 
 
-def _foundation_models_backend(tier: str = "device") -> Backend | None:
-    """Apple Foundation Models via an arm's-length Swift helper (no key, no third-party
-    egress). `tier`: "device" = the on-device ~3B model (works from an unsigned helper);
-    "pcc" = the larger Private Cloud Compute server model (privacy-preserving, higher
-    capability). PCC requires a code-signed, ENTITLED app, so it is unavailable from a
-    dev command-line helper and the backend returns None there — honest fallback. The
-    code path is ready for when the engine ships as a signed app. The helper is compiled
-    on first use and cached."""
+def _foundation_models_backend() -> Backend | None:
+    """Apple Foundation Models via an arm's-length on-device Swift helper.
+
+    Claude is a separate optional local-CLI narrator. This backend never sends image
+    pixels or prompts to a third-party service.
+    """
     helper = _ensure_foundation_helper()
     if helper is None:
         return None
-    args = [str(helper)] + (["pcc"] if tier == "pcc" else [])
+    args = [str(helper)]
 
     def _run(prompt: str) -> str | None:
         import subprocess

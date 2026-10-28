@@ -232,8 +232,7 @@ class NarrationCfg:
     max_regenerations: int
 
     def __post_init__(self) -> None:
-        if self.backend not in ("foundation_models", "foundation_models_pcc",
-                                "claude_cli"):
+        if self.backend not in ("foundation_models", "claude_cli"):
             raise ValueError(f"narration.backend: {self.backend!r}")
         if self.max_regenerations < 0:
             raise ValueError("narration.max_regenerations must be >= 0")
