@@ -166,7 +166,9 @@ def _cmd_train_taste(args: argparse.Namespace) -> int:
     from memory_graph import vision
     from memory_graph.config import load_config
     from memory_graph.ingest.library import LibraryStats, candidate_from_photo
+    from memory_graph.metrics.faces import named_people
     from memory_graph.paths import TASTE_MODEL_PATH
+    from memory_graph.scoring.dispatch import _excluded_by_policy
     from memory_graph.scoring.taste import evaluate, privacy_policy_fingerprint, write_taste_meta
 
     if not vision.available():
@@ -185,7 +187,23 @@ def _cmd_train_taste(args: argparse.Namespace) -> int:
         cand = candidate_from_photo(p, cfg, LibraryStats())
         if cand is None or cand.thumb is None:
             continue
-        emb = vision.feature_print(cand.thumb)
+        meta = cand.library_meta or {}
+        if set(meta.get("albums") or []) & set(cfg.privacy.hidden_albums):
+            cand.release_thumb()
+            continue
+        vres = vision.analyze_image(cand.thumb, ("classify", "featureprint"))
+        row_for_policy = {
+            "person_names": named_people(meta),
+            "scene_labels": vres.get("classify") if vres else None,
+            "camera_model": cand.exif.get("model"),
+            "city": getattr(p, "city", None),
+            "country": getattr(p, "country", None),
+            "state": getattr(p, "state", None),
+        }
+        if _excluded_by_policy(row_for_policy, cfg.privacy):
+            cand.release_thumb()
+            continue
+        emb = vres.get("featureprint") if vres else None
         cand.release_thumb()
         if emb is None:
             continue
@@ -205,6 +223,8 @@ def _cmd_train_taste(args: argparse.Namespace) -> int:
     print(f"  base rate (favorites): {ev.base_rate:.1%}  ({ev.n_favorites} favorites)")
     print(f"  held-out AUC: {ev.auc:.3f}  (0.5 = chance; set the success bar vs base rate)")
     print(f"  saved to {TASTE_MODEL_PATH}")
+    print("  next: run `memory-graph sample-run --all --reprocess-existing` to refresh "
+          "stored taste scores and resonance.")
     return 0
 
 
@@ -325,7 +345,7 @@ def _cmd_sample_run(args: argparse.Namespace) -> int:
         "this can take a while..."
     )
     for cand in sample:
-        if cand.id in done:
+        if cand.id in done and not args.reprocess_existing:
             continue
         if not _rehydrate_thumb(cand, cfg):
             continue
@@ -931,6 +951,8 @@ def main(argv: list[str] | None = None) -> int:
                     help="Photos database path when the library is not the default one")
     sr.add_argument("--hdd-only", action="store_true", help="skip the Library source")
     sr.add_argument("--no-vision", action="store_true", help="skip Apple Vision (faster)")
+    sr.add_argument("--reprocess-existing", action="store_true",
+                    help="reanalyze existing photo IDs, for a rebuilt personal model")
 
     lbl = sub.add_parser("label", help="local labeling UI (loopback) to tune the engine")
     lbl.add_argument("--port", type=int, default=8737, help="loopback port")
