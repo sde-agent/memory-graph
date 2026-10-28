@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from memory_graph.config import load_config
+from memory_graph.config import PrivacyCfg, load_config
 from memory_graph.scoring.dispatch import select_dispatch
 
 
@@ -41,6 +41,16 @@ def test_private_never_dispatched() -> None:
     out = select_dispatch(rows, dcfg(), now=1_000_000.0, n=2)
     assert "secret" not in [i.id for i in out]
     assert "ok" in [i.id for i in out]
+
+
+def test_hard_person_exclusion_removes_highest_candidate() -> None:
+    rows = [
+        {**_row("excluded", 5.0), "person_names": '["Excluded Person"]'},
+        {**_row("other", 0.2), "person_names": "[]"},
+    ]
+    privacy = PrivacyCfg(hidden_albums=("Hidden",), exclude_people=("Excluded Person",))
+    out = select_dispatch(rows, dcfg(), now=1_000_000.0, n=1, privacy=privacy)
+    assert [i.id for i in out] == ["other"]
 
 
 def test_recently_dispatched_excluded() -> None:
