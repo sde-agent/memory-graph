@@ -56,6 +56,46 @@ def write_taste_meta(**values: Any) -> None:
     TASTE_META_PATH.write_text(json.dumps(values, indent=2, sort_keys=True) + "\n")
 
 
+def load_embedding_cache(path) -> dict[str, np.ndarray]:
+    """Load the local photo->feature-vector cache; missing cache means empty."""
+    path = Path(path)
+    if not path.is_file():
+        return {}
+    try:
+        with np.load(path, allow_pickle=False) as archive:
+            meta = json.loads(str(archive["metadata"].item()))
+            keys = meta.get("keys", [])
+            matrix = np.asarray(archive["vectors"], dtype=np.float32)
+        if len(keys) != len(matrix):
+            return {}
+        return {key: matrix[index] for index, key in enumerate(keys)}
+    except (OSError, KeyError, TypeError, ValueError, json.JSONDecodeError):
+        return {}
+
+
+def save_embedding_cache(path, vectors: dict[str, np.ndarray]) -> None:
+    """Atomically save derived vectors, never image pixels."""
+    import tempfile
+
+    path = Path(path)
+    path.parent.mkdir(parents=True, exist_ok=True)
+    keys = sorted(vectors)
+    if keys:
+        matrix = np.vstack([vectors[key] for key in keys]).astype(np.float32)
+    else:
+        matrix = np.empty((0, 0), np.float32)
+    metadata = json.dumps({"format_version": 1, "keys": keys}, separators=(",", ":"))
+    fd, temp_name = tempfile.mkstemp(prefix=".taste-embeddings-", suffix=".npz", dir=path.parent)
+    import os
+    os.close(fd)
+    try:
+        np.savez_compressed(temp_name, vectors=matrix, metadata=np.array(metadata))
+        os.replace(temp_name, path)
+    finally:
+        if os.path.exists(temp_name):
+            os.unlink(temp_name)
+
+
 def mark_taste_stale(privacy: Any, reason: str = "policy changed") -> None:
     """Invalidate a personal model without deleting it or touching photo history."""
     write_taste_meta(
@@ -125,9 +165,14 @@ class TasteModel:
         p = Path(path)
         if not p.is_file():
             return None
-        meta = taste_model_status()
-        if meta and meta.get("status") == "stale":
-            return None
+        meta_path = p.with_name("model_meta.json")
+        if meta_path.is_file():
+            try:
+                meta = json.loads(meta_path.read_text())
+            except (OSError, json.JSONDecodeError):
+                meta = None
+            if meta and meta.get("status") == "stale":
+                return None
         try:
             return cls.from_dict(json.loads(p.read_text()))
         except Exception:
