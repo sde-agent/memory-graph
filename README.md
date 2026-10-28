@@ -260,7 +260,9 @@ V1 exposes global resonance settings in `config.toml`:
 | Favorite | 1.5× |
 | Taste-model influence | 1.0 |
 
-V1 does not yet expose per-person or hard exclusion tuning. That is a deliberate V2 product milestone. Historical insight claims remain separate from dispatch preference tuning.
+V1 also exposes these global controls in the Streamlit app sidebar under **Memory tuning**. You can preview the current top three versus a proposed top three and save a personal profile to gitignored `config.local.toml`. The Favorite-trained taste model is intentionally not a Stage 1 control; it is archive-specific and opt-in for future learning.
+
+V1 does not yet expose per-person hard exclusions or per-entity weights. Those are a deliberate V2 product milestone. Historical insight claims remain separate from dispatch preference tuning.
 
 ## Development checks
 

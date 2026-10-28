@@ -71,45 +71,29 @@ dutch_tilt_from = 4.5        # degrees
 dutch_tilt_fade = 2.0
 shutter_drag = [0.1, 0.5]    # seconds (intentional motion blur)
 
-# ---- Resonance ranking (evaluation.md Part A, TUNED to the labeling pass) ---------
-# Tuned to the STRICT dispatch-worthiness labels (corrected ground truth). Quadrant is
-# a soft minor input (single-argmax unreliable: felt top-1 29%, top-2 69%). Measured
-# lifts (worthy minus not-worthy): known_person +0.26, faces +0.22, Q3 +0.12; candid
-# was NEGATIVE (-0.05) and Q4 near-flat (+0.03) against the strict target — correcting
-# the earlier ambiguous-label tuning. Q3 (people/tender) is the top quadrant.
+# ---- Resonance ranking -------------------------------------------------------------
+# Portable defaults are neutral. A user's personal profile belongs in the gitignored
+# config.local.toml, not in the public repository. The V2 tuning UI can preview and save
+# local overrides without changing historical insight claims.
 [resonance.weights]
-q1 = 0.55
-q2 = 0.45
-q3 = 0.80   # the people/tender quadrant — the strongest dispatch-worthy quadrant
-q4 = 0.55
-q5 = 0.25
+q1 = 1.0
+q2 = 1.0
+q3 = 1.0
+q4 = 1.0
+q5 = 1.0
 
 [resonance.modifiers]
-# age_boost amplifies ONLY the Q1 term. Linear from 1.0 (now) to age_max_boost at
-# age_full_years and beyond. Not a global multiplier.
 age_full_years = 15.0
-age_max_boost = 1.8
-# warm_gate scales the Q2 term when NOT warm-lit (cold ultra-wide != "warm aliveness").
-warm_gate_cold = 0.4
-# Flat multipliers (default 1.0 when the signal is unavailable). Tuned to the measured
-# STRICT lifts: known_person dominates; candid was anti-predictive so it is now neutral.
-candid_bonus = 1.05          # candid was NOT dispatch-predictive (-0.05); near-neutral
-posed_penalty = 0.95
-favorite_bonus = 1.5         # rare but explicit; small positive lift
-known_person_bonus = 2.0     # STRONGEST signal by far (+0.26 lift); weighted up
-face_present_bonus = 1.3     # a face present is strongly dispatch-worthy (+0.22 lift)
-# The quadrant affinity is scaled down so it is a minor input next to the person/taste
-# signals (Part C). base_quadrant_affinity is multiplied by this before the multipliers.
-quadrant_weight = 0.6
-# The taste model's learned "would I want to see this again" (61% winner-rate).
-taste_weight = 1.0
-# Blur de-weight: DISABLED (blur_deweight = 1.0) after the strict-relabel finding.
-# The labels showed the owner's dispatch-worthy photos are actually LESS sharp on
-# average (median 170) than the ones they'd skip (median 351) — cherished moments are
-# often soft/candid/shallow-DOF, while razor-sharp shots skew mundane. A blur de-weight
-# would rank the owner's taste BACKWARDS, so it is neutralized. (Accidental-shake junk
-# is still handled where it works: burst keyframe election picks the sharpest of
-# near-identical frames.) Kept as a tunable knob; 1.0 = no effect.
+age_max_boost = 1.0
+warm_gate_cold = 1.0
+candid_bonus = 1.0
+posed_penalty = 1.0
+favorite_bonus = 1.0
+known_person_bonus = 1.0
+face_present_bonus = 1.0
+quadrant_weight = 1.0
+# Personal Favorite-trained models are archive-specific and opt-in; new users start neutral.
+taste_weight = 0.0
 blur_floor = 60.0
 blur_deweight = 1.0
 

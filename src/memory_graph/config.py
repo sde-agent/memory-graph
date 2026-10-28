@@ -290,6 +290,47 @@ def load_config(
     return _build(raw)
 
 
+def save_local_resonance_profile(weights: ResonanceWeights, modifiers: ResonanceModifiers) -> None:
+    """Persist a manual resonance profile in the gitignored local overlay."""
+    path = LOCAL_CONFIG
+    text = path.read_text() if path.is_file() else ""
+    lines = text.splitlines()
+    kept: list[str] = []
+    skip = False
+    for line in lines:
+        stripped = line.strip()
+        if stripped in ("[resonance.weights]", "[resonance.modifiers]"):
+            skip = True
+            continue
+        if skip and stripped.startswith("[") and stripped.endswith("]"):
+            skip = False
+        if not skip:
+            kept.append(line)
+    block = f"""# Local resonance profile written by the tuning panel.
+[resonance.weights]
+q1 = {weights.q1}
+q2 = {weights.q2}
+q3 = {weights.q3}
+q4 = {weights.q4}
+q5 = {weights.q5}
+
+[resonance.modifiers]
+age_full_years = {modifiers.age_full_years}
+age_max_boost = {modifiers.age_max_boost}
+warm_gate_cold = {modifiers.warm_gate_cold}
+candid_bonus = {modifiers.candid_bonus}
+posed_penalty = {modifiers.posed_penalty}
+favorite_bonus = {modifiers.favorite_bonus}
+known_person_bonus = {modifiers.known_person_bonus}
+face_present_bonus = {modifiers.face_present_bonus}
+quadrant_weight = {modifiers.quadrant_weight}
+taste_weight = {modifiers.taste_weight}
+blur_floor = {modifiers.blur_floor}
+blur_deweight = {modifiers.blur_deweight}
+"""
+    path.write_text("\n".join(kept).rstrip() + "\n\n" + block)
+
+
 def _build(raw: dict) -> Config:
     framing = raw["framing"]
     res = raw["resonance"]

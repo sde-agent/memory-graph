@@ -204,7 +204,7 @@ The final V1 state has **357 passing tests** and a clean publish check.
 ## Current limits
 
 - Generic Vision face embeddings remain experimental.
-- Per-person weights and hard exclusions are not yet implemented.
+- Stage 1 global tuning is available in the local app; per-person weights and hard exclusions are not yet implemented.
 - Per-camera and per-subject tuning is not yet implemented.
 - Place names are not reverse-geocoded; the system only reports local geographic coverage unless names are already available.
 - Face-level persistence expanded the database to roughly 120 MB, above the original 100 MB target.

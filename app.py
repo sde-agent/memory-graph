@@ -21,12 +21,21 @@ Run:  make app   (or: streamlit run app.py)
 
 from __future__ import annotations
 
+import time
+from dataclasses import replace
+from pathlib import Path
+
 import streamlit as st
 
-from memory_graph.config import load_config
-from memory_graph.db import connect, get_insights
+from memory_graph.config import (
+    load_config,
+    save_local_resonance_profile,
+)
+from memory_graph.db import all_canonical_rows, connect, get_insights
 from memory_graph.narration.ask import select_nodes
 from memory_graph.narration.llm import make_backend, narrate_answer
+from memory_graph.pipeline import rescorable, rescore_row
+from memory_graph.scoring.dispatch import select_dispatch
 
 
 @st.cache_resource
@@ -36,9 +45,10 @@ def _load():
     conn = connect()
     try:
         insights = get_insights(conn)
+        rows = all_canonical_rows(conn)
     finally:
         conn.close()
-    return cfg, insights
+    return cfg, insights, rows
 
 
 @st.cache_resource
@@ -80,6 +90,88 @@ def _render_answer(col, label: str, sel, ans):
             st.markdown(ans.evidence.replace("The evidence behind this:\n", ""))
 
 
+def _tuned_dispatch(rows, cfg, weights, modifiers):
+    """Preview a dispatch under in-memory controls without writing photo rows."""
+    tuned_cfg = replace(cfg, resonance_weights=weights, resonance_modifiers=modifiers)
+    preview_rows = []
+    for row in rows:
+        copy = dict(row)
+        if rescorable(copy):
+            copy.update(rescore_row(copy, tuned_cfg))
+        preview_rows.append(copy)
+    return select_dispatch(preview_rows, cfg.dispatch, now=time.time(), n=3)
+
+
+def _render_dispatch_preview(title: str, items, rows_by_id: dict[str, dict]) -> None:
+    st.markdown(f"**{title}**")
+    for item in items:
+        row = rows_by_id.get(item.id, {})
+        path = row.get("deriv_path")
+        if path and Path(path).is_file():
+            st.image(path, width=130)
+        st.caption(f"{item.id} · resonance {item.resonance:.3f}")
+
+
+def _tuning_panel(cfg, rows) -> None:
+    """Stage 1 manual global controls and an in-memory top-3 preview."""
+    with st.sidebar:
+        st.header("Memory tuning")
+        st.caption("Preview changes before saving. The graph and photo rows are unchanged.")
+        with st.form("resonance_tuning"):
+            st.subheader("Emotional affinity")
+            q = {
+                key: st.slider(label, 0.0, 2.0, float(value), 0.05)
+                for key, label, value in (
+                    ("q1", "Nostalgic / Reflective", cfg.resonance_weights.q1),
+                    ("q2", "Visceral / High-Arousal", cfg.resonance_weights.q2),
+                    ("q3", "Empathetic / Connected", cfg.resonance_weights.q3),
+                    ("q4", "Solitary / Introspective", cfg.resonance_weights.q4),
+                    ("q5", "Provocative / Dynamic", cfg.resonance_weights.q5),
+                )
+            }
+            st.subheader("Behavioral signals")
+            known = st.slider("Known person boost", 0.0, 2.0,
+                              float(cfg.resonance_modifiers.known_person_bonus), 0.05)
+            face = st.slider("Any face boost", 0.0, 2.0,
+                             float(cfg.resonance_modifiers.face_present_bonus), 0.05)
+            favorite = st.slider("Favorite boost", 0.0, 2.0,
+                                 float(cfg.resonance_modifiers.favorite_bonus), 0.05)
+            quadrant = st.slider("Quadrant contribution", 0.0, 2.0,
+                                 float(cfg.resonance_modifiers.quadrant_weight), 0.05)
+            candid = st.slider("Candid bonus", 0.0, 2.0,
+                               float(cfg.resonance_modifiers.candid_bonus), 0.05)
+            posed = st.slider("Posed penalty", 0.0, 2.0,
+                              float(cfg.resonance_modifiers.posed_penalty), 0.05)
+            preview = st.form_submit_button("Preview top 3")
+        if preview:
+            weights = replace(cfg.resonance_weights, **q)
+            modifiers = replace(
+                cfg.resonance_modifiers,
+                known_person_bonus=known,
+                face_present_bonus=face,
+                favorite_bonus=favorite,
+                quadrant_weight=quadrant,
+                candid_bonus=candid,
+                posed_penalty=posed,
+            )
+            st.session_state["tuning_profile"] = (weights, modifiers)
+        profile = st.session_state.get("tuning_profile")
+        if profile:
+            weights, modifiers = profile
+            st.divider()
+            before = select_dispatch(rows, cfg.dispatch, now=time.time(), n=3)
+            after = _tuned_dispatch(rows, cfg, weights, modifiers)
+            rows_by_id = {row["id"]: row for row in rows}
+            _render_dispatch_preview("Current V1 top 3", before, rows_by_id)
+            _render_dispatch_preview("Proposed personal top 3", after, rows_by_id)
+            if st.button("Save personal profile"):
+                save_local_resonance_profile(weights, modifiers)
+                st.cache_resource.clear()
+                st.success("Saved to local config.local.toml")
+                st.rerun()
+            st.caption("Taste-model influence is intentionally not a Stage 1 control.")
+
+
 def main() -> None:
     st.set_page_config(page_title="Memory Graph", page_icon="📷", layout="wide")
     st.title("📷 Memory Graph")
@@ -89,10 +181,12 @@ def main() -> None:
         "reflection. Nothing leaves your Mac."
     )
 
-    cfg, insights = _load()
+    cfg, insights, rows = _load()
     if not insights:
         st.error("No insight graph yet. Run `memory-graph graph` after analyzing photos.")
         return
+
+    _tuning_panel(cfg, rows)
 
     # Which narrators are actually available right now.
     fm = _backend("foundation_models")
