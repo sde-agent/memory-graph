@@ -150,6 +150,12 @@ max_references_per_name = 64
 [privacy]
 # Photos in these albums are off-limit: never narrated, never dispatched off-device.
 hidden_albums = ["Hidden"]
+# V2 hard exclusions: local-only dispatch policy. These do not delete history or graph facts.
+exclude_people = []
+exclude_anonymous_clusters = []
+exclude_subjects = []
+exclude_camera_models = []
+exclude_places = []
 
 [owner]
 # The archive owner's OWN name(s) as they appear in the Photos face-naming. When the

@@ -87,7 +87,7 @@ def build_server():
             rows = dbmod.dispatch_candidates(conn)   # excludes private by default
             by_id = {r["id"]: r for r in rows}
             now = datetime.now(UTC).timestamp()
-            items = select_dispatch(rows, cfg.dispatch, now=now, n=n)
+            items = select_dispatch(rows, cfg.dispatch, now=now, n=n, privacy=cfg.privacy)
             out: list = []
             for it in items:
                 row = by_id.get(it.id, {})

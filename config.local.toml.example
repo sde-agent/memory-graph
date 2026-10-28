@@ -70,3 +70,9 @@ ranges = [
 # Albums that are completely off-limits: never analyzed for dispatch, never
 # narrated, never shown. Defaults to the Apple Photos "Hidden" album.
 hidden_albums = ["Hidden"]
+# Optional V2 hard exclusions. These affect dispatch, not historical graph facts.
+exclude_people = []
+exclude_anonymous_clusters = []
+exclude_subjects = []
+exclude_camera_models = []
+exclude_places = []

@@ -2,13 +2,21 @@
 
 from __future__ import annotations
 
-from memory_graph.config import load_config
+from memory_graph.config import ResonanceModifiers, ResonanceWeights
 from memory_graph.metrics.router import QuadrantVector
 from memory_graph.scoring.resonance import ResonanceInputs, age_boost, resonance
 
 
 def cfg():
-    return load_config()
+    class TestConfig:
+        resonance_weights = ResonanceWeights(q1=0.55, q2=0.45, q3=0.80, q4=0.55, q5=0.25)
+        resonance_modifiers = ResonanceModifiers(
+            age_full_years=15.0, age_max_boost=1.8, warm_gate_cold=0.4,
+            candid_bonus=1.05, posed_penalty=0.95, favorite_bonus=1.5,
+            known_person_bonus=2.0, face_present_bonus=1.3, quadrant_weight=0.6,
+            taste_weight=1.0, blur_floor=60.0, blur_deweight=1.0,
+        )
+    return TestConfig()
 
 
 def _res(inp: ResonanceInputs) -> float:

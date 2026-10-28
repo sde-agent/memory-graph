@@ -15,11 +15,12 @@ Selection is pure over a list of candidate rows, so it is unit-testable without 
 
 from __future__ import annotations
 
+import json
 import random
 from dataclasses import dataclass
 from typing import Any
 
-from memory_graph.config import DispatchCfg
+from memory_graph.config import DispatchCfg, PrivacyCfg
 
 
 @dataclass(frozen=True)
@@ -29,6 +30,77 @@ class DispatchItem:
     dominant_quadrant: int | None
     favorite: bool
     source: str
+
+
+def _excluded_by_policy(row: dict[str, Any], privacy: PrivacyCfg | None) -> bool:
+    """Apply local hard exclusions without deleting or altering historical rows."""
+    if privacy is None:
+        return False
+    excluded_people = {value.casefold() for value in privacy.exclude_people}
+    raw_names = row.get("person_names")
+    try:
+        names = json.loads(raw_names or "[]") if isinstance(raw_names, str) else (raw_names or [])
+    except (TypeError, json.JSONDecodeError):
+        names = []
+    if excluded_people & {str(name).casefold() for name in names}:
+        return True
+
+    excluded_clusters = set(privacy.exclude_anonymous_clusters)
+    raw_clusters = row.get("anonymous_cluster_ids")
+    try:
+        clusters = (
+            json.loads(raw_clusters or "[]")
+            if isinstance(raw_clusters, str)
+            else (raw_clusters or [])
+        )
+    except (TypeError, json.JSONDecodeError):
+        clusters = []
+    if excluded_clusters & {str(cluster) for cluster in clusters}:
+        return True
+
+    model = str(row.get("camera_model") or "").casefold()
+    if model and any(model == value.casefold() for value in privacy.exclude_camera_models):
+        return True
+    places = {
+        str(row.get(key) or "").casefold()
+        for key in ("city", "state", "country")
+        if row.get(key)
+    }
+    if places & {value.casefold() for value in privacy.exclude_places}:
+        return True
+
+    excluded_subjects = {value.casefold() for value in privacy.exclude_subjects}
+    if excluded_subjects:
+        raw_labels = row.get("scene_labels")
+        try:
+            labels = (
+                json.loads(raw_labels or "[]")
+                if isinstance(raw_labels, str)
+                else (raw_labels or [])
+            )
+        except (TypeError, json.JSONDecodeError):
+            labels = []
+        label_names = {
+            str(item[0]).casefold()
+            for item in labels
+            if isinstance(item, (list, tuple)) and item
+        }
+        subject_aliases = {
+            "children": {"child", "baby", "teen", "toddler"},
+            "nature": {"outdoor", "sky", "plant", "grass", "tree", "mountain", "field"},
+            "water": {"water", "beach", "ocean", "sea", "lake", "river", "shore"},
+            "animals": {"animal", "dog", "cat", "bird", "pet", "horse"},
+            "food": {"food", "meal", "dessert", "cake", "fruit", "drink"},
+            "travel": {"vehicle", "car", "train", "boat", "aircraft", "luggage", "road"},
+            "celebration": {"wedding", "balloon", "cake", "candle", "decoration"},
+        }
+        excluded_labels = {
+            label for subject in excluded_subjects
+            for label in subject_aliases.get(subject, {subject})
+        }
+        if excluded_labels & label_names:
+            return True
+    return False
 
 
 def _recently_dispatched(row: dict[str, Any], now: float, window_days: int) -> bool:
@@ -44,6 +116,7 @@ def select_dispatch(
     *,
     now: float,
     n: int | None = None,
+    privacy: PrivacyCfg | None = None,
 ) -> list[DispatchItem]:
     """Select the daily dispatch from candidate photo rows.
 
@@ -62,6 +135,7 @@ def select_dispatch(
         and not r.get("private")
         and r.get("resonance") is not None
         and not _recently_dispatched(r, now, cfg.repeat_window_days)
+        and not _excluded_by_policy(r, privacy)
     ]
     if not eligible:
         return []

@@ -167,7 +167,7 @@ def _cmd_train_taste(args: argparse.Namespace) -> int:
     from memory_graph.config import load_config
     from memory_graph.ingest.library import LibraryStats, candidate_from_photo
     from memory_graph.paths import TASTE_MODEL_PATH
-    from memory_graph.scoring.taste import evaluate
+    from memory_graph.scoring.taste import evaluate, privacy_policy_fingerprint, write_taste_meta
 
     if not vision.available():
         print("Apple Vision unavailable; cannot embed photos for the taste model.")
@@ -196,6 +196,11 @@ def _cmd_train_taste(args: argparse.Namespace) -> int:
         return 1
     model, ev = evaluate(np.array(embeddings), np.array(labels), seed=cfg.dispatch.seed)
     model.save(TASTE_MODEL_PATH)
+    write_taste_meta(
+        status="ready", policy_fingerprint=privacy_policy_fingerprint(cfg.privacy),
+        training_photos=ev.n, favorites=ev.n_favorites, base_rate=ev.base_rate,
+        auc=ev.auc, feature_model="vision-feature-print-v1",
+    )
     print(f"taste model trained on {ev.n} photos.")
     print(f"  base rate (favorites): {ev.base_rate:.1%}  ({ev.n_favorites} favorites)")
     print(f"  held-out AUC: {ev.auc:.3f}  (0.5 = chance; set the success bar vs base rate)")
@@ -382,7 +387,8 @@ def _cmd_dispatch(args: argparse.Namespace) -> int:
     conn = connect()
     rows = dispatch_candidates(conn)
     by_id = {r["id"]: r for r in rows}
-    items = select_dispatch(rows, cfg.dispatch, now=datetime.now(UTC).timestamp(), n=args.n or None)
+    items = select_dispatch(rows, cfg.dispatch, now=datetime.now(UTC).timestamp(),
+                            n=args.n or None, privacy=cfg.privacy)
     conn.close()
     if not items:
         print("No eligible photos to dispatch (analyze some first).")
