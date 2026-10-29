@@ -44,11 +44,8 @@ self_names = ["Your Name"]
 # "FUJIFILM X100S" = 1.52
 # "iPhone 4" = 7.64
 # "KODAK DC5000 ZOOM DIGITAL CAMERA" = 4.762
-# To find a camera's crop factor: look up its sensor size, or divide a known
-# 35mm-equivalent focal by the raw focal the camera recorded for the same shot.
-# Full-frame = 1.0, APS-C Canon = 1.6, APS-C Nikon/Sony = 1.5, Micro 4/3 = 2.0.
-# (An automated "scan my library for cameras missing this" setup step is planned
-# for the public V2 release; for now you add models by hand.)
+# (An automated scan for cameras missing this is a Stage 3 feature. Until then,
+# review the camera list before a full run and add confirmed factors here.)
 
 # ---------------------------------------------------------------------------
 # Your life eras (for "what was my style in the 2010s?")

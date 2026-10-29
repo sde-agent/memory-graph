@@ -6,13 +6,13 @@ module-contract draft and reflects the design decided with the owner. The siblin
 
 Companion docs:
 - `steering/intent.md` — the emotional vision (why).
-- `steering/product.md` — product decisions, guardrails, roadmap.
+- `V2_PRODUCT_BRIEF.md` — product decisions, guardrails, and deferred roadmap.
 - `evaluation.md` — how every phase and the end product are measured and guarded.
 
 Language/runtime: Python 3.11+. Package root: `memory_graph/`. Config-driven (no
 personal data in code). Apple on-device frameworks (Vision, Foundation Models) are
-preferred over PyTorch/CLIP wherever a V3/iOS-portable choice exists; exceptions (the
-V1 CLIP taste model) are noted.
+preferred over PyTorch/CLIP; the shipped taste model uses Apple Vision feature prints.
+Historical CLIP experiments are not required for the Stage 2 release.
 
 Reuse legend per module:  [COPY] adapt from photo-themes  ·  [NEW] build fresh  ·
 [REF] reference-only, reshape to our contract.
@@ -178,10 +178,8 @@ resonance = base_quadrant_affinity      # Σ w[q]*q_score[q] with per-term modif
   the LLM critique/insights. Dispatch is where resonance is EVALUATED, not the only
   place it is CONSUMED. Weights/magnitudes are config. (See evaluation.md Part A.)
 
-### `taste.py` / `embeddings.py`  [COPY from taste.py/taste_v2.py/embeddings.py]
-- V1.5: per-user logistic regression on CLIP image embeddings, trained on the owner's
-  Favorite flag (later direct thumbs). Episode-split CV + blind-eval. Output is a
-  resonance INPUT, not a label oracle. (V3 note: CLIP → Apple Vision feature prints.)
+### `taste.py` / `embeddings.py` [implemented]
+- The Stage 2 personal taste model uses Apple Vision feature prints and Favorite labels. It is an optional resonance input, never a label oracle. Historical CLIP experiments are not required for installation.
 
 ### `dispatch.py`  [NEW]
 - `daily_dispatch(date, n=1..3) -> list[DispatchItem]` — top-N by resonance with
@@ -348,4 +346,7 @@ home/cache]
 - **P9** Taste model (V1.5).
 - **P10** Longitudinal critique + eras.
 
-Nothing is implemented yet. This is the contract the build must satisfy.
+- **Stage 2 implemented:** ingest, rejection, canonicalization, technical metrics, face/identity handling, quadrant scoring, resonance/taste dispatch, grounded narration, insight graph, MCP, and local app.
+- **Stage 3 deferred:** relationship inference, richer per-person policy, automatic setup discovery, calibrated identity, and other personalization that needs new privacy and accuracy evaluation.
+
+This file records the original build contract and the current implementation boundary; it is no longer a statement that the system is unimplemented.

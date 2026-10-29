@@ -47,7 +47,7 @@ The engine reads an external HDD sequentially and reads macOS Photos through `os
 
 Thumbnails are temporary. The system extracts measurements, releases the image, and stores metadata and derived signals rather than full-resolution copies.
 
-The final V1 archive contains **55,771 canonical photographs**:
+The final Stage 2 archive run contains **55,771 canonical photographs**. These numbers describe my private archive and are included as a reproducibility snapshot, not as a promise about another user's installation:
 
 - 22,737 from the HDD;
 - 33,034 from the Photos Library.
@@ -75,14 +75,7 @@ Each photo can carry:
 
 The system does not hand raw rows to the narrator and ask it to discover the story. Code promotes observations into structured insight nodes first. Each node has a claim, tags, an optional direction and magnitude, and evidence context.
 
-The final V1 graph contains **192 nodes across 33 dimensions**, including:
-
-- emotional style and era style;
-- framing, depth of field, exposure, geometry, sharpness, and candidness;
-- cameras, lenses, seasons, travel, and location coverage;
-- people, relationships, named identity, anonymous recurrence, and identity caveats;
-- subjects, landscapes, light, color, and golden-hour associations;
-- change over time, resonance gaps, taste, and favorites.
+The final Stage 2 graph contains **192 nodes across 33 dimensions** in this archive. It includes aggregate people presence, trusted named identity, and anonymous recurrence alongside technical and emotional dimensions. It does not claim to infer a universal social graph. Relationship inference, life-trajectory interpretation, and richer per-person policy controls are deferred to Stage 3.
 
 The language model narrates selected nodes. It does not create the underlying claims.
 
@@ -116,7 +109,7 @@ The current V1 settings are:
 | Taste-model influence | 1.0 |
 | Blur adjustment | neutral at 1.0× |
 
-These are current engineering settings, not universal truths about photography. Per-person and hard exclusion controls are intentionally left for V2.
+These are current engineering settings, not universal truths about photography. The Stage 2 app exposes global tuning and dispatch-only hard exclusions. Richer per-person weighting and narration-time exclusions are deferred to Stage 3.
 
 ## What went wrong, and what I learned
 
@@ -199,20 +192,20 @@ The narrator also has a grounding verifier. It rejects prose that invents names 
 - a Streamlit reflection app;
 - loopback-only viewing and local privacy guardrails.
 
-The final V1 state has **357 passing tests** and a clean publish check.
+The release checkpoint has **358 passing tests** and clean Ruff lint. The publish check must pass before distribution. The private archive counts above are illustrative evidence from one run, not defaults or acceptance criteria for another user's archive.
 
 ## Current limits
 
 - Generic Vision face embeddings remain experimental.
-- Stage 1 global tuning is available in the local app; per-person weights and hard exclusions are not yet implemented.
+- Stage 2 global tuning and dispatch-only hard exclusions are available in the local app; richer per-person weighting and narration-time exclusions are deferred to Stage 3.
 - Per-camera and per-subject tuning is not yet implemented.
 - Place names are not reverse-geocoded; the system only reports local geographic coverage unless names are already available.
 - Face-level persistence expanded the database to roughly 120 MB, above the original 100 MB target.
 - The system works on my Mac but is not yet a polished first-run experience for another person.
 
-## Next version
+## Stage 3 boundary
 
-The next version should focus on making the system personal and portable:
+Stage 3 may add:
 
 - local controls for per-person weights and exclusions;
 - camera, subject, place, and technical-construct weights;

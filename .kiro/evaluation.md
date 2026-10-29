@@ -1323,3 +1323,25 @@ rounds 1 to 3, the single-feeling context, and the Part W feelings test for roun
 - Single-feeling context (rounds 1 and 2) unchanged: 17%, against 24% chance.
 - Reading: the ranking is above the control, but not by the 25 points pre-registered. The engine's mood calls do not match the owner's feelings any better than chance.
 - Next: owner decides whether to reword the five feeling names (step 3 of Next). Any change needs a new pre-registration and a fresh sample.
+
+
+---
+
+## Stage 2 release gate
+
+This checkpoint is the release boundary before Stage 3. The release includes local ingest, utility-image rejection, burst canonicalization, technical and quadrant metrics, conservative identity/aggregate recurrence, resonance dispatch, the Favorite-trained personal taste input, grounded narration, the insight graph, MCP text-only surfaces, and the local reflection app.
+
+The release explicitly does **not** add a relationship-inference graph, per-person social trajectory product, or richer narration-time exclusion graph. Existing people observations must remain grounded in named identity or aggregate presence. Local hard exclusions are dispatch policy only: they do not delete historical evidence or silently retrain the taste model.
+
+Before distribution, run:
+
+```text
+make refresh
+make test
+make lint
+.venv/bin/python scripts/publish_check.py
+```
+
+The release is acceptable only when the working tree is clean, the repository is at the intended release commit, the local overlay remains gitignored, no relationship-experiment files are present, and the publish check passes without printing personal values. A new user must receive only the public defaults and must create `config.local.toml` for names, crop factors, eras, and privacy choices.
+
+The private archive counts and AUC examples elsewhere in this document are historical case-study evidence. They are not portable defaults, minimums, or claims about a fresh installation. Stage 3 begins only after this baseline is tagged and downloaded into a clean environment successfully.

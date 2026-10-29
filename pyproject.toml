@@ -16,8 +16,8 @@ dependencies = [
     "mcp",
 ]
 
-# CLIP/torch are only needed by the V1.5 taste model; kept optional so the core
-# engine stays installable on machines (and a future iOS core) without torch.
+# The core taste model uses Apple Vision feature prints. The optional CLIP/torch extra is
+# retained only for historical experiments and is not part of the Stage 2 release path.
 [project.optional-dependencies]
 taste = ["open_clip_torch", "torch"]
 # The local reflection app (Streamlit search bar). Optional so the core engine and MCP

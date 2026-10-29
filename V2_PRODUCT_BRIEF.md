@@ -16,13 +16,11 @@ V1 proves the core loop on a real archive:
 - answer reflective questions through local narrators;
 - keep pixels local.
 
-Current V1 snapshot: 55,771 canonical photos, 192 insight nodes, 52,114 face observations, 871 anonymous recurring-face clusters, and 357 passing tests.
+Current Stage 2 snapshot: 55,771 canonical photos, 192 insight nodes, 52,114 face observations, 871 anonymous recurring-face clusters, and 358 passing tests. These figures come from the author's private archive and are not required for a new installation.
 
-## V2 priorities
+## Stage 3 priorities
 
-### 1. Personal tuning controls
-
-Add a local tuning UI backed by `config.local.toml`:
+The Stage 2 release deliberately stops short of relationship inference and richer per-person policy. Existing local hard exclusions affect dispatch only; they do not alter historical evidence or train a social/relationship graph. Any expansion of those controls belongs to Stage 3 and requires a separate privacy evaluation.
 
 - quadrant weights Q1–Q5;
 - age and warmth behavior;
@@ -34,7 +32,7 @@ Add a local tuning UI backed by `config.local.toml`:
 - technical preferences for bokeh, sharpness, negative space, candidness, and motion;
 - reset-to-defaults and preview-before-save.
 
-Hard exclusions and soft de-emphasis must be separate concepts. A blocked person should not be dispatched or narrated, while a de-emphasized person may still appear in a direct historical question.
+Hard exclusions and soft de-emphasis must remain separate concepts. In Stage 2, an excluded item is removed from dispatch while historical questions and stored evidence remain unchanged. Richer narration-time exclusion policy is deferred to Stage 3.
 
 Tuning affects dispatch/resonance only. It must not silently rewrite unweighted historical distributions or delete insight evidence.
 

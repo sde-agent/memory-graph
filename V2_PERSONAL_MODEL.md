@@ -6,9 +6,9 @@ A personal taste model is not a universal model. It is trained from one person's
 
 The model therefore needs a receipt—called **provenance**—that records where it came from and whether it is still valid.
 
-## Example
+## Provenance example
 
-The current archive-specific model was trained from:
+The following is a provenance example, not the current public default or a claim about another user's archive. A real local model must display its own measured receipt before influencing dispatch.
 
 - the owner's Apple Photos Library;
 - Favorite labels;

@@ -2,7 +2,8 @@
 #
 # This file ships with the repo and contains NO personal data. Personal values
 # (archive paths, home position, eras, people-of-interest) go in a gitignored
-# `config.local.toml` that overlays this one. See product.md "V2" rules.
+# `config.toml` contains public defaults. Personal values live in the gitignored
+# `config.local.toml` overlay. See V2_PRODUCT_BRIEF.md for release boundaries.
 #
 # Every threshold the engine uses lives here — never hard-coded. Changing a value
 # here is a deliberate, reviewable act.

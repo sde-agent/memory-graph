@@ -9,17 +9,16 @@ A local-first photographic memory companion for macOS. It is not an asset manage
 
 Read the full story in [CASE_STUDY.md](CASE_STUDY.md) and the next-product plan in [V2_PRODUCT_BRIEF.md](V2_PRODUCT_BRIEF.md).
 
-## V1 status
+## Stage 2 release status
 
-V1 is a working local research product validated on a real archive:
+This checkout is the stable Stage 2 baseline. It is a downloadable local research product, not a hosted service or a universal psychology model.
 
-- 55,771 canonical photos: 22,737 HDD and 33,034 Photos Library;
-- 192 grounded insight nodes across 33 dimensions;
-- 52,114 face observations and 871 anonymous recurring-person clusters;
-- Apple Vision, local derivatives, local SQLite, and local narrator adapters;
-- 357 passing tests and clean Ruff lint.
+- Apple Photos metadata and local derivatives, plus optional external-HDD ingest;
+- grounded insight graph across technical, emotional, era, subject, and identity dimensions;
+- resonance dispatch, personal Favorite-trained taste scoring, local narrators, MCP, and Streamlit app;
+- 358 automated tests and clean Ruff lint at the release checkpoint.
 
-The system is intentionally honest about limits. Generic Vision face embeddings are experimental, place names are not reverse-geocoded, and per-person/subject resonance tuning is a V2 feature.
+The archive counts in the case study are from the author's private run and are not expected for a new installation. Generic Vision face embeddings remain experimental, place names are not reverse-geocoded, and social relationship inference plus richer per-person weighting/exclusion policy are deferred to Stage 3. Current exclusions are local dispatch filters; they do not rewrite historical facts or train a relationship graph.
 
 ## Privacy model
 
@@ -260,9 +259,9 @@ V1 exposes global resonance settings in `config.toml`:
 | Favorite | 1.5× |
 | Taste-model influence | 1.0 |
 
-V1 also exposes these global controls in the Streamlit app sidebar under **Memory tuning**. You can preview the current top three versus a proposed top three and save a personal profile to gitignored `config.local.toml`. The sidebar shows whether an archive-specific Favorite-trained taste model exists and lets you turn it off for clean manual-weight experiments. The taste model is never portable between users.
+Stage 2 exposes global resonance controls in the Streamlit app sidebar under **Memory tuning**. You can preview the current top three versus a proposed top three and save a personal profile to gitignored `config.local.toml`. The sidebar shows whether an archive-specific Favorite-trained taste model exists and lets you turn it off for clean manual-weight experiments. The taste model is never portable between users.
 
-Hard exclusions are available in the app sidebar under **Hard exclusions**. Select named people or subject categories, optionally enter anonymous cluster IDs, and save. Excluded items are removed from dispatch but remain in the historical graph and database. This is intentionally separate from future soft per-person weighting.
+Hard exclusions are available in the app sidebar under **Hard exclusions**. Select named people or subject categories, optionally enter anonymous cluster IDs, and save. Excluded items are removed from dispatch but remain in the historical graph and database. This is a local dispatch policy, not relationship inference or a retraining label.
 
 ## Development checks
 
@@ -280,6 +279,6 @@ The publish check scans for personal data and denied strings before public relea
 
 Local ingest, clutter rejection, burst election, technical metrics, face detection, conservative identity, anonymous recurrence, five-quadrant scoring, resonance dispatch, insight graph, local narrators, camera/lens/depth/context nodes, and Streamlit comparison app.
 
-### V2 — next
+### Stage 3 — deferred
 
-Personal tuning weights, per-person hard exclusions, camera/subject/place controls, friend-ready setup, crop-factor discovery, calibrated face identity, local place-region clustering, smaller sidecars/database, and a polished Apple Foundation Models package.
+Relationship inference, per-person soft weighting, friend-ready setup, automatic crop-factor discovery, calibrated face identity, local place-region clustering, smaller sidecars/database, and richer privacy-policy workflows.
