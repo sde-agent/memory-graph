@@ -73,15 +73,18 @@ memory-graph reidentify --recognition-min-similarity 0.95
 memory-graph reidentify --cluster-only --anonymous-threshold 0.90
 memory-graph graph
 
-# 7. Explore
+# 7. Explore from the command line
 memory-graph dispatch -n 3
 memory-graph ask "What was my style in the 2010s?"
+
+# 8. Explore and tune in the app (recommended)
+make app   # opens http://127.0.0.1:8501
 ```
 
 Rule of thumb: run `memory-graph graph` once at the end, and again any time you add a
 source (steps 5 and 6) or change crop factors. You do not need to repeat `sample-run`
 unless you add new photos — if you only changed crop factors, use `memory-graph rescore`
-instead.
+instead. Tuning resonance in the app (step 8) needs no re-analysis at all.
 
 The rest of this document explains each step.
 
@@ -246,9 +249,10 @@ memory-graph ask "How do my camera choices affect the people I photograph?"
 memory-graph critique
 ```
 
-## Reflection app
+## 8. Reflection app (and resonance tuning)
 
-The local Streamlit app compares available narrators using the same grounded evidence:
+The local Streamlit app is the main way to explore the graph and to tune what gets
+surfaced. Launch it after step 4 (or later):
 
 ```bash
 make app
@@ -256,7 +260,61 @@ make app
 
 Then open `http://127.0.0.1:8501`.
 
-The app supports questions about style, people, eras, cameras, lenses, depth of field, landscapes, light, and memory patterns. Expand the Evidence section when evaluating an answer: if the evidence is wrong, the issue is retrieval or graph generation; if the evidence is right but the prose is weak, the issue is the narrator.
+Ask questions about style, people, eras, cameras, lenses, depth of field, landscapes,
+light, and memory patterns. Expand the Evidence section when judging an answer: if the
+evidence is wrong, the issue is retrieval or graph generation; if the evidence is right
+but the prose is weak, the issue is the narrator.
+
+### Tune resonance (what gets surfaced)
+
+Resonance decides which photos rank highest in the daily dispatch. You tune it entirely
+in the app sidebar under **Memory tuning** — no config file editing and no re-analysis.
+
+1. In the sidebar, move the sliders:
+   - **Emotional affinity** — the five quadrant weights (Q1–Q5).
+   - **Behavioral signals** — known-person boost, any-face boost, favorite boost,
+     quadrant contribution, candid bonus, posed penalty.
+   - **Use learned taste model** — on only if you trained one (see below).
+2. Click **Preview top 3**. The app shows your current top three next to the proposed
+   top three, recomputed in memory. Nothing is saved yet.
+3. Adjust and preview until the proposed set looks right.
+4. Click **Save personal profile**.
+
+**What saving does, exactly:** it writes a `[resonance.weights]` and
+`[resonance.modifiers]` block to the gitignored `config.local.toml`, then reloads the
+app so the change takes effect immediately. That is the whole step.
+
+**Does it need a model refresh or re-run?** No. Resonance is computed from signals
+already stored on each photo, so a weight change applies instantly. You do **not** run
+`sample-run`, `rescore`, or `graph` after tuning. The next `memory-graph dispatch` (and
+the MCP dispatch) will read the new weights from `config.local.toml` automatically.
+`rescore`/`graph` are only for optics/crop-factor changes (step 3), not for resonance.
+
+To reset to the shipped neutral defaults, delete the `[resonance.weights]` and
+`[resonance.modifiers]` blocks from `config.local.toml`.
+
+### Optional: train a personal taste model
+
+The **Use learned taste model** checkbox is disabled until you train one. The taste model
+learns from your Apple Photos Favorites and adds a "would I want to see this again"
+signal to resonance:
+
+```bash
+memory-graph train-taste
+```
+
+This writes an archive-specific model to `data/` (gitignored, never shared between
+users). After training, restart `make app`; the checkbox becomes available, and turning
+it on and saving adds the taste signal to your profile. It is optional — leave it off to
+tune the manual weights alone.
+
+### Hard exclusions
+
+Also in the sidebar, under **Hard exclusions**, you can stop specific named people or
+subject categories from ever appearing in the dispatch. Select them and click **Save hard
+exclusions** (written to `config.local.toml`). Excluded items are removed from dispatch
+only — they stay in the historical graph and database. This is a local dispatch policy,
+not relationship inference or a retraining label, and like resonance it needs no re-run.
 
 ### Narrators
 
@@ -298,10 +356,10 @@ make app
 
 Claude is not required for the engine. The app sends only grounded text notes to the selected narrator; photo pixels are never sent through the Memory Graph engine. Claude may use its own configured service connection, while Apple Foundation Models stays on-device.
 
-## Resonance weights
+## Resonance weight defaults (reference)
 
 The shipped `config.toml` uses neutral defaults so a new install starts without any
-personal tuning baked in:
+personal tuning baked in. Tune these in the app (step 8), not by hand.
 
 | Signal | Shipped default |
 |---|---:|
@@ -315,13 +373,8 @@ personal tuning baked in:
 | Favorite | 1.0× |
 | Taste-model influence | 0.0 (off until you train one) |
 
-These are deliberately flat. Personal weights are archive-specific and are never
-committed; tune them for yourself in the app (below) and save to the gitignored
-`config.local.toml`.
-
-Stage 2 exposes global resonance controls in the Streamlit app sidebar under **Memory tuning**. You can preview the current top three versus a proposed top three and save a personal profile to gitignored `config.local.toml`. The sidebar shows whether an archive-specific Favorite-trained taste model exists and lets you turn it off for clean manual-weight experiments. The taste model is never portable between users.
-
-Hard exclusions are available in the app sidebar under **Hard exclusions**. Select named people or subject categories, optionally enter anonymous cluster IDs, and save. Excluded items are removed from dispatch but remain in the historical graph and database. This is a local dispatch policy, not relationship inference or a retraining label.
+These are deliberately flat. Personal weights are archive-specific, are never committed,
+and live only in the gitignored `config.local.toml` that the app writes.
 
 ## Development checks
 
