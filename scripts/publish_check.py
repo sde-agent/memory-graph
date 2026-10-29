@@ -18,6 +18,7 @@ Usage:  python scripts/publish_check.py
 from __future__ import annotations
 
 import re
+import subprocess
 import sys
 import tomllib
 from pathlib import Path
@@ -71,6 +72,41 @@ def _candidate_files() -> list[Path]:
 _USER_PATH = re.compile(r"/Users/[A-Za-z0-9._-]+/")
 
 
+def _history_leaks(patterns: list[tuple[str, re.Pattern[str]]]) -> list[str]:
+    """Scan committed branch/tag history without printing matched personal values."""
+    try:
+        result = subprocess.run(
+            ["git", "log", "--branches", "--tags", "-p", "--no-ext-diff", "--format=commit %H"],
+            cwd=ROOT,
+            capture_output=True,
+            text=True,
+            check=True,
+        )
+    except (OSError, subprocess.CalledProcessError) as exc:
+        raise RuntimeError("could not scan git history") from exc
+
+    leaks: list[str] = []
+    commit = "unknown"
+    current_file = ""
+    for line in result.stdout.splitlines():
+        if line.startswith("commit "):
+            commit = line.removeprefix("commit ").strip()
+            current_file = ""
+            continue
+        if line.startswith("+++ b/"):
+            current_file = line.removeprefix("+++ b/").strip()
+            continue
+        if not line.startswith("+") or line.startswith("+++"):
+            continue
+        if current_file == "scripts/publish_check.py":
+            continue
+        for _, pat in patterns:
+            if pat.search(line) or _USER_PATH.search(line):
+                leaks.append(f"  git-history:{commit}: personal data in a committed addition")
+                break
+    return leaks
+
+
 def main() -> int:
     deny = _denylist()
     if not deny:
@@ -84,6 +120,12 @@ def main() -> int:
     # drowning in false alarms that would train the user to ignore it.
     patterns = [(d, re.compile(rf"\b{re.escape(d)}\b", re.IGNORECASE)) for d in deny]
     leaks: list[str] = []
+    try:
+        leaks.extend(_history_leaks(patterns))
+    except RuntimeError:
+        print("publish-check: FAILED — could not scan git history.")
+        return 2
+
     for f in _candidate_files():
         if f.resolve() == Path(__file__).resolve():
             continue   # don't flag this script's own /Users/<name> example in a comment
