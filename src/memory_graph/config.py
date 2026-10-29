@@ -372,17 +372,6 @@ def save_local_privacy_exclusions(
         "exclude_places = " + toml_list(places) + "\n"
     )
     path.write_text("\n".join(kept).rstrip() + "\n\n" + block)
-    from memory_graph.scoring.taste import mark_taste_stale
-
-    mark_taste_stale(
-        PrivacyCfg(
-            hidden_albums=(), exclude_people=people,
-            exclude_anonymous_clusters=anonymous_clusters,
-            exclude_subjects=subjects, exclude_camera_models=camera_models,
-            exclude_places=places,
-        ),
-        reason="hard exclusion policy changed",
-    )
 
 
 def _build(raw: dict) -> Config:

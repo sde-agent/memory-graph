@@ -28,14 +28,9 @@ AUC: 0.853
 Status: ready
 ```
 
-If the owner later excludes a person, some Favorite photos containing that person may have influenced the old model. The old model is then marked:
+If the owner later excludes a person, that exclusion is a dispatch policy. It immediately filters that person's photos from resurfacing, but it does not automatically invalidate the taste model. This is intentional: the user should be able to make a policy change without waiting for a full rebuild.
 
-```text
-Status: stale
-Reason: exclusion policy changed
-```
-
-The old model is not silently trusted under the new policy.
+A separate, optional clean-model rebuild can remove excluded photos from training and validation. That operation creates a new provenance record and a fresh AUC.
 
 ## Exclusion and retraining lifecycle
 
@@ -44,7 +39,9 @@ Hard exclusion saved
         ↓
 Exclusion applies immediately to dispatch
         ↓
-Personal model marked stale
+Existing taste model may continue to rank eligible photos
+        ↓
+Optional clean-model rebuild requested
         ↓
 Excluded photos removed from training and validation
         ↓
@@ -53,11 +50,9 @@ Model retrains if enough eligible data exists
 Fresh AUC is computed
         ↓
 Eligible photos are rescored
-        ↓
-New model becomes ready
 ```
 
-During retraining, the deterministic resonance model remains available. The system does not need to become unusable while the personal model is being rebuilt.
+This separates the fast policy action from the slower modeling decision. A hard exclusion is not automatically treated as a negative emotional label.
 
 ## AUC lifecycle
 

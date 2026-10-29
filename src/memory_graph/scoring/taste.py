@@ -165,14 +165,6 @@ class TasteModel:
         p = Path(path)
         if not p.is_file():
             return None
-        meta_path = p.with_name("model_meta.json")
-        if meta_path.is_file():
-            try:
-                meta = json.loads(meta_path.read_text())
-            except (OSError, json.JSONDecodeError):
-                meta = None
-            if meta and meta.get("status") == "stale":
-                return None
         try:
             return cls.from_dict(json.loads(p.read_text()))
         except Exception:

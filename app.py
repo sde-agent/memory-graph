@@ -148,11 +148,9 @@ def _tuning_panel(cfg, rows) -> None:
             posed = st.slider("Posed penalty", 0.0, 2.0,
                               float(cfg.resonance_modifiers.posed_penalty), 0.05)
             taste_meta = taste_model_status()
-            taste_available = TASTE_MODEL_PATH.is_file() and not (
-                taste_meta and taste_meta.get("status") == "stale"
-            )
+            taste_available = TASTE_MODEL_PATH.is_file()
             if taste_meta and taste_meta.get("status") == "stale":
-                taste_status = "stale — retraining required"
+                taste_status = "available — policy exclusion changed; rebuild optional"
             else:
                 taste_status = "available" if taste_available else "not available"
             st.caption("Archive-specific Favorite-trained model: " + taste_status)
