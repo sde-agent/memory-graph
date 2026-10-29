@@ -38,7 +38,54 @@ The archive counts in the case study are from the author's private run and are n
 - Apple Foundation Models support for the on-device narrator path;
 - optional local `claude` CLI for development comparison.
 
-## Install
+## Quick start
+
+Run these steps once, in order. Each step links to a section below with details and
+troubleshooting. Steps 5 and 6 are optional.
+
+```bash
+# 1. Install (one time)
+git clone https://github.com/sde-agent/memory-graph.git
+cd memory-graph
+make setup
+source .venv/bin/activate
+make init
+memory-graph doctor
+
+# 2. Configure your personal values (one time)
+cp config.local.toml.example config.local.toml
+#    edit config.local.toml — see "2. Configure" below
+
+# 3. Fix camera crop factors (recommended, before analysis)
+memory-graph camera-scan
+memory-graph camera-scan --confirm
+
+# 4. Analyze your Photos Library and build the graph
+memory-graph sample-run --all
+memory-graph graph
+
+# 5. (Optional) add an external HDD, then rebuild the graph
+memory-graph analyze-hdd "/Volumes/YourDrive/Photos"
+memory-graph graph
+
+# 6. (Optional) resolve recurring people, then rebuild the graph
+memory-graph reidentify --recognition-min-similarity 0.95
+memory-graph reidentify --cluster-only --anonymous-threshold 0.90
+memory-graph graph
+
+# 7. Explore
+memory-graph dispatch -n 3
+memory-graph ask "What was my style in the 2010s?"
+```
+
+Rule of thumb: run `memory-graph graph` once at the end, and again any time you add a
+source (steps 5 and 6) or change crop factors. You do not need to repeat `sample-run`
+unless you add new photos — if you only changed crop factors, use `memory-graph rescore`
+instead.
+
+The rest of this document explains each step.
+
+## 1. Install
 
 From a fresh clone:
 
@@ -51,34 +98,22 @@ make init
 memory-graph doctor
 ```
 
-`make setup` creates and installs into `.venv`; it cannot activate that environment in your parent shell. If you do not want to activate it, prefix every command with `.venv/bin/`, for example:
+`make setup` is the only networked step; it creates `.venv` and installs the package and
+dev dependencies. It cannot activate the environment in your parent shell, so either
+`source .venv/bin/activate` (as above) or prefix every command with `.venv/bin/`:
 
 ```bash
 .venv/bin/memory-graph doctor
-.venv/bin/memory-graph graph
 ```
 
-If you pull new repository commits into an existing checkout, refresh the editable CLI installation:
+If you later pull new commits into an existing checkout, refresh the editable install:
 
 ```bash
 git pull
 make refresh
-memory-graph --version
-memory-graph sample-run --help
 ```
 
-The `sample-run` help must show `--all`. If it does not, the command is still resolving an older environment; use the explicit path:
-
-```bash
-.venv/bin/python -m pip install -e ".[dev]"
-.venv/bin/memory-graph sample-run --all
-```
-
-Running `memory-graph` with no command now prints the help. The valid syntax is `memory-graph sample-run --all`; `-sample-run` is not valid argparse syntax.
-
-The setup command is the only networked step. It installs the local Python package and development dependencies.
-
-## Configure your archive
+## 2. Configure your archive
 
 Copy the personal overlay and edit it:
 
@@ -89,102 +124,105 @@ cp config.local.toml.example config.local.toml
 Put personal values only in `config.local.toml`, which is gitignored:
 
 - your Apple Photos face name under `[owner].self_names`;
-- crop factors under `[framing.crop]`;
 - life-era ranges under `[eras].ranges`;
-- Hidden albums under `[privacy].hidden_albums`.
+- Hidden albums under `[privacy].hidden_albums`;
+- camera crop factors under `[framing.crop]` — you usually do not edit these by hand;
+  step 3 fills them in for you.
 
-The external HDD root is passed as a command-line argument rather than committed into configuration:
-
-```bash
-memory-graph ingest-hdd "/Volumes/YourDrive/Photos"
-```
-
-## Check camera crop factors (recommended before first analysis)
+## 3. Fix camera crop factors (recommended)
 
 Many older cameras (Canon DSLRs and compacts, point-and-shoots, early phones) record
 only the raw lens focal length, not the 35mm equivalent. Uncorrected, every such photo
 is misread as ultra-wide, which skews the framing insight and the quadrant/resonance
-scores. Scan your sources for affected cameras and write the proposed crop factors:
+scores. Do this before the first analysis.
 
 ```bash
-memory-graph camera-scan              # list models missing a 35mm equivalent
+memory-graph camera-scan              # list camera models missing a 35mm equivalent
 memory-graph camera-scan --confirm    # write the resolvable factors to config.local.toml
 ```
 
-The scan reads metadata only (no masters, no pixels) and completes in seconds. Models
-it cannot resolve are reported, not guessed; add those by hand under `[framing.crop]`.
-Add `--hdd-root "/Volumes/YourDrive/Photos"` to include an external archive, or
-`--hdd-only --hdd-root ...` to scan only the drive. If you have already built a graph,
-run `memory-graph rescore` after confirming to correct it without re-decoding.
+The scan reads metadata only (no masters, no pixels) and finishes in seconds. Models it
+cannot resolve are reported, not guessed; add those by hand under `[framing.crop]`. To
+include an external archive, add `--hdd-root "/Volumes/YourDrive/Photos"`, or scan only
+the drive with `--hdd-only --hdd-root "/Volumes/YourDrive/Photos"`.
 
-## Build from Apple Photos (default)
+If you change crop factors *after* already analyzing, you do not need to re-run
+`sample-run`; just correct the existing graph in place:
 
-An external HDD is optional. The normal first run uses the macOS Photos Library and local derivatives only:
+```bash
+memory-graph rescore
+memory-graph graph
+```
+
+## 4. Analyze and build the graph
+
+This is the main run. It uses the macOS Photos Library and its local derivatives:
 
 ```bash
 memory-graph sample-run --all
 memory-graph graph
 ```
 
-This scans the complete Photos Library metadata pool, deduplicates bursts and cross-source duplicates, rejects utility images, analyzes every surviving canonical photo, and writes the local graph. `--all` means all canonical survivors; it does not create one row for every burst member or duplicate asset.
+`sample-run --all` scans the full Photos Library metadata pool, deduplicates bursts and
+cross-source duplicates, rejects utility images, and analyzes every surviving canonical
+photo. `--all` means all canonical survivors, not one row per burst member or duplicate.
+`graph` then builds the insight graph the questions below draw on.
 
-The Photos Library requires Full Disk Access for the terminal. If the run is interrupted, repeat the command; the analysis is resumable and existing photo IDs are skipped.
+The run requires Full Disk Access for your terminal (see troubleshooting). It prints
+progress for pool scanning, deduplication, optics, Vision analysis, and graph
+generation, and reports the Library total, rejections, canonical count, and final
+database count. A full library can take a while; if interrupted, just repeat the
+command — the analysis is resumable and already-analyzed photos are skipped.
 
-If you see `FileNotFoundError: Could not get path to photo library database`, follow these exact steps:
-
-1. Open the **Photos** app and confirm the library opens normally.
-2. In Photos, use **Photos → Settings → General → Use as System Photo Library** if that button is available.
-3. Open **System Settings → Privacy & Security → Full Disk Access**.
-4. Click the **+** button and authenticate with your Mac password/Touch ID. You must add the application that launches the command:
-   - Apple Terminal: `/Applications/Utilities/Terminal.app`
-   - iTerm: `/Applications/iTerm.app`
-   - Kiro: `/Applications/Kiro.app`
-   - VS Code: `/Applications/Visual Studio Code.app`
-5. Quit and reopen that application. Then test:
-
-```bash
-memory-graph ingest-library --limit 1
-```
-
-If you run the command in an IDE's integrated terminal, add the IDE itself—not only Apple Terminal. If **Full Disk Access** is empty, that is normal: click **+** to add the application manually; it does not appear automatically.
-
-If the Photos Library is stored somewhere non-default, find its database:
-
-```bash
-find "$HOME/Pictures" -name photos.sqlite -print
-```
-
-Then pass the result explicitly:
+If the Photos Library is in a non-default location, point at its database:
 
 ```bash
 memory-graph sample-run --all --dbfile "/path/to/photos.sqlite"
 ```
 
-The HDD is optional. `--dbfile` is only needed for a non-default Photos Library location.
+### Troubleshooting: Full Disk Access
 
-The commands print a progress bar/phase status for pool scanning, deduplication, optics, Vision analysis, and graph generation. A full Photos Library run can take a while; leave the terminal open and repeat the command if interrupted.
+If you see `FileNotFoundError: Could not get path to photo library database`:
 
-The runner reports the Library total, cheap rejections, canonical count, Vision rejections, and final database count. This makes coverage auditable instead of silently claiming that every asset became a separate graph row.
+1. Open the **Photos** app and confirm the library opens normally.
+2. In Photos, use **Photos → Settings → General → Use as System Photo Library** if that button is available.
+3. Open **System Settings → Privacy & Security → Full Disk Access**.
+4. Click **+**, authenticate, and add the application that launches the command:
+   - Apple Terminal: `/Applications/Utilities/Terminal.app`
+   - iTerm: `/Applications/iTerm.app`
+   - Kiro: `/Applications/Kiro.app`
+   - VS Code: `/Applications/Visual Studio Code.app`
+5. Quit and reopen that application, then test:
 
-## Optional external HDD
+```bash
+memory-graph ingest-library --limit 1
+```
 
-If you also have an external archive, pass its root explicitly. The HDD is not required for Apple Photos-only users:
+If you run commands in an IDE's integrated terminal, add the IDE itself, not only Apple
+Terminal. An empty Full Disk Access list is normal — click **+** to add the app manually.
+To find a non-default library database:
+
+```bash
+find "$HOME/Pictures" -name photos.sqlite -print
+```
+
+## 5. (Optional) add an external HDD
+
+The HDD is not required for Apple Photos-only users. If you have an external archive,
+analyze it and rebuild the graph:
 
 ```bash
 memory-graph analyze-hdd "/Volumes/YourDrive/Photos"
-```
-
-For the optimized archive-cache workflow, set `MEMORY_GRAPH_ARCHIVE_CACHE` before `sample-run`. Without that environment variable and without an HDD cache, the runner simply uses the Photos Library source.
-
-After adding sources, rebuild the graph:
-
-```bash
 memory-graph graph
 ```
 
-## Identity and recurring people
+If you maintain the optimized archive-cache, set `MEMORY_GRAPH_ARCHIVE_CACHE` before
+`sample-run`. Without it (and without an HDD cache) the runner simply uses the Photos
+Library source.
 
-Build the named gallery and process local derivatives:
+## 6. (Optional) identity and recurring people
+
+Resolve named and recurring faces, then rebuild the graph:
 
 ```bash
 memory-graph reidentify --recognition-min-similarity 0.95
@@ -199,14 +237,13 @@ The identity pass:
 - clusters recurring unnamed faces without assigning invented names;
 - stores vectors in ignored local sidecars, not SQLite image blobs.
 
-## Explore the graph
+## 7. Explore the graph
 
 ```bash
 memory-graph dispatch -n 3
 memory-graph ask "What was my style in the 2010s?"
 memory-graph ask "How do my camera choices affect the people I photograph?"
 memory-graph critique
-memory-graph graph
 ```
 
 ## Reflection app
