@@ -99,6 +99,24 @@ The external HDD root is passed as a command-line argument rather than committed
 memory-graph ingest-hdd "/Volumes/YourDrive/Photos"
 ```
 
+## Check camera crop factors (recommended before first analysis)
+
+Many older cameras (Canon DSLRs and compacts, point-and-shoots, early phones) record
+only the raw lens focal length, not the 35mm equivalent. Uncorrected, every such photo
+is misread as ultra-wide, which skews the framing insight and the quadrant/resonance
+scores. Scan your sources for affected cameras and write the proposed crop factors:
+
+```bash
+memory-graph camera-scan              # list models missing a 35mm equivalent
+memory-graph camera-scan --confirm    # write the resolvable factors to config.local.toml
+```
+
+The scan reads metadata only (no masters, no pixels) and completes in seconds. Models
+it cannot resolve are reported, not guessed; add those by hand under `[framing.crop]`.
+Add `--hdd-root "/Volumes/YourDrive/Photos"` to include an external archive, or
+`--hdd-only --hdd-root ...` to scan only the drive. If you have already built a graph,
+run `memory-graph rescore` after confirming to correct it without re-decoding.
+
 ## Build from Apple Photos (default)
 
 An external HDD is optional. The normal first run uses the macOS Photos Library and local derivatives only:
@@ -243,21 +261,26 @@ make app
 
 Claude is not required for the engine. The app sends only grounded text notes to the selected narrator; photo pixels are never sent through the Memory Graph engine. Claude may use its own configured service connection, while Apple Foundation Models stays on-device.
 
-## Current resonance weights
+## Resonance weights
 
-V1 exposes global resonance settings in `config.toml`:
+The shipped `config.toml` uses neutral defaults so a new install starts without any
+personal tuning baked in:
 
-| Signal | Value |
+| Signal | Shipped default |
 |---|---:|
-| Q1 Nostalgic & Reflective | 0.55 |
-| Q2 Visceral & High-Arousal | 0.45 |
-| Q3 Empathetic & Connected | 0.80 |
-| Q4 Solitary & Introspective | 0.55 |
-| Q5 Provocative & Dynamic | 0.25 |
-| Known named person | 2.0× |
-| Any detected face | 1.3× |
-| Favorite | 1.5× |
-| Taste-model influence | 1.0 |
+| Q1 Nostalgic & Reflective | 1.0 |
+| Q2 Visceral & High-Arousal | 1.0 |
+| Q3 Empathetic & Connected | 1.0 |
+| Q4 Solitary & Introspective | 1.0 |
+| Q5 Provocative & Dynamic | 1.0 |
+| Known named person | 1.0× |
+| Any detected face | 1.0× |
+| Favorite | 1.0× |
+| Taste-model influence | 0.0 (off until you train one) |
+
+These are deliberately flat. Personal weights are archive-specific and are never
+committed; tune them for yourself in the app (below) and save to the gitignored
+`config.local.toml`.
 
 Stage 2 exposes global resonance controls in the Streamlit app sidebar under **Memory tuning**. You can preview the current top three versus a proposed top three and save a personal profile to gitignored `config.local.toml`. The sidebar shows whether an archive-specific Favorite-trained taste model exists and lets you turn it off for clean manual-weight experiments. The taste model is never portable between users.
 
@@ -279,6 +302,11 @@ The publish check scans for personal data and denied strings before public relea
 
 Local ingest, clutter rejection, burst election, technical metrics, face detection, conservative identity, anonymous recurrence, five-quadrant scoring, resonance dispatch, insight graph, local narrators, camera/lens/depth/context nodes, and Streamlit comparison app.
 
-### Stage 3 — deferred
+### Stage 3 — in progress
 
-Relationship inference, per-person soft weighting, friend-ready setup, automatic crop-factor discovery, calibrated face identity, local place-region clustering, smaller sidecars/database, and richer privacy-policy workflows.
+Camera focal-length backfill (`camera-scan`): find cameras missing a 35mm-equivalent
+focal and propose crop factors before analysis.
+
+### Deferred
+
+Relationship inference, per-person soft weighting, friend-ready setup wizard, calibrated face identity, local place-region clustering, smaller sidecars/database, and richer privacy-policy workflows.

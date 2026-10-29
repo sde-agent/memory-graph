@@ -4,7 +4,15 @@
 PY := .venv/bin/python
 PIP := $(PY) -m pip
 
-.PHONY: setup refresh init doctor test lint fix clean publish-check app
+.PHONY: setup refresh init doctor test lint fix clean publish-check app _require-venv
+
+# Fail with a clear message if the venv is missing, instead of a cryptic
+# "no such file or directory: .venv/bin/python".
+_require-venv:
+	@test -x $(PY) || { \
+	  echo "error: $(PY) not found. Run 'make setup' first to create the venv."; \
+	  exit 1; \
+	}
 
 setup:  ## create the venv and install the package (the only networked target)
 	python3 -m venv .venv
@@ -13,22 +21,22 @@ setup:  ## create the venv and install the package (the only networked target)
 refresh:  ## reinstall the editable package after pulling repository updates
 	$(PIP) install -e ".[dev]"
 
-init:  ## create the database and data directories
+init: _require-venv  ## create the database and data directories
 	$(PY) -m memory_graph.cli init
 
-doctor:  ## report config and environment health
+doctor: _require-venv  ## report config and environment health
 	$(PY) -m memory_graph.cli doctor
 
-test:  ## run the test suite (sockets disabled)
+test: _require-venv  ## run the test suite (sockets disabled)
 	$(PY) -m pytest -q
 
-lint:  ## check style with ruff
+lint: _require-venv  ## check style with ruff
 	.venv/bin/ruff check .
 
-fix:  ## auto-fix style issues
+fix: _require-venv  ## auto-fix style issues
 	.venv/bin/ruff check --fix .
 
-publish-check:  ## fail-closed PII scan — run before any commit/push to a public repo
+publish-check: _require-venv  ## fail-closed PII scan — run before any commit/push to a public repo
 	$(PY) scripts/publish_check.py
 
 app:  ## launch the local reflection app (Streamlit search bar; needs the 'app' extra)

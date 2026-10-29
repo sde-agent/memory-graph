@@ -848,6 +848,128 @@ def _cmd_backfill_context(args: argparse.Namespace) -> int:
     return 0
 
 
+def _scan_camera_metadata(cfg, *, photos_db: str | None, hdd_root: str | None,
+                          skip_library: bool = False):
+    """Collect camera metadata records from the guarded sources (no master access).
+
+    Metadata-only: EXIF make/model/focal are read without decoding any pixels, so this
+    is fast even over a large library. Prints a periodic count so a long scan does not
+    look like a hang.
+    """
+    from memory_graph.ingest.hdd import stream_hdd_camera_meta
+    from memory_graph.ingest.library import stream_library_camera_meta
+
+    records = []
+
+    def _note(n: int) -> None:
+        if n and n % 5000 == 0:
+            print(f"  ...read {n} photo metadata records so far", flush=True)
+
+    if not skip_library:
+        for rec in stream_library_camera_meta(dbfile=photos_db):
+            records.append(rec)
+            _note(len(records))
+    if hdd_root is not None:
+        for rec in stream_hdd_camera_meta(hdd_root, cfg):
+            records.append(rec)
+            _note(len(records))
+    return records
+
+
+def _cmd_camera_scan(args: argparse.Namespace) -> int:
+    """Find camera models that lack a 35mm-equivalent focal and propose crop factors.
+
+    Many older cameras (Canon DSLRs/compacts, point-and-shoots, early phones) record
+    only the raw lens focal, not the 35mm equivalent. Left uncorrected, every such
+    frame is misread as ultra-wide and the quadrant/resonance scores skew. This command
+    scans the Photos Library metadata and (optionally) an external HDD, lists the models
+    missing the equivalent, and proposes a crop factor per model. Nothing is written
+    unless you pass --confirm; no photo master is opened and no analysis is run.
+    """
+    from memory_graph.config import load_config
+    from memory_graph.ingest.hdd import HddNotReadOnly
+    from memory_graph.ingest.library import LibraryMasterAccessError
+    from memory_graph.paths import LOCAL_CONFIG
+    from memory_graph.setup.cameras import inventory_cameras, propose_crop_factors
+    from memory_graph.setup.writer import update_crop_factors
+
+    cfg = load_config()
+    hdd_root = args.hdd_root
+    photos_db = args.dbfile
+    skip_library = bool(getattr(args, "hdd_only", False))
+    if skip_library and hdd_root is None:
+        print("--hdd-only needs --hdd-root to point at a read-only archive.")
+        return 1
+    print("camera-scan: reading source metadata (no masters, no pixels)...")
+    try:
+        records = _scan_camera_metadata(
+            cfg, photos_db=photos_db, hdd_root=hdd_root, skip_library=skip_library
+        )
+    except HddNotReadOnly as exc:
+        print(f"HDD not read-only: {exc}")
+        return 1
+    except LibraryMasterAccessError as exc:
+        print(f"camera-scan aborted (master access attempted): {exc}")
+        return 1
+    except FileNotFoundError as exc:
+        print("Photos Library database not found.")
+        print("Grant Full Disk Access or pass --dbfile with the photos.sqlite path.")
+        print(f"details: {exc}")
+        return 1
+
+    observations = inventory_cameras(records)
+    missing = [obs for obs in observations if obs.focal_35mm is None]
+    proposals = propose_crop_factors(missing, cfg)
+
+    print(
+        f"camera-scan: {len(records)} metadata records; "
+        f"{len(proposals)} model(s) missing a 35mm-equivalent focal."
+    )
+    if not proposals:
+        print("Every camera already reports a 35mm-equivalent focal; no crop factors needed.")
+        return 0
+
+    resolvable: dict[str, float] = {}
+    unresolved: list[str] = []
+    for proposal in proposals:
+        if proposal.proposed_crop_factor is not None:
+            resolvable[proposal.model] = proposal.proposed_crop_factor
+            print(
+                f"  {proposal.model}: {proposal.proposed_crop_factor:g} "
+                f"({proposal.source}, {proposal.affected_count} photo(s))"
+            )
+        else:
+            unresolved.append(proposal.model)
+            print(
+                f"  {proposal.model}: UNRESOLVED "
+                f"({proposal.affected_count} photo(s)) — add a factor by hand in "
+                f"{LOCAL_CONFIG} under [framing.crop]."
+            )
+
+    if not args.confirm:
+        print()
+        print("These are proposals only. Rerun with --confirm to write the resolvable "
+              f"factors to {LOCAL_CONFIG}, then run `memory-graph sample-run --all` "
+              "(or `rescore` if you already analyzed).")
+        return 0
+
+    if not resolvable:
+        print("Nothing resolvable to write; configuration unchanged.")
+        return 1 if unresolved else 0
+
+    # Merge with any crop factors already in the local overlay so a confirm never drops
+    # a model the user set earlier.
+    merged = dict(cfg.framing.crop)
+    merged.update(resolvable)
+    update_crop_factors(merged)
+    print(f"Wrote {len(resolvable)} crop factor(s) to {LOCAL_CONFIG}.")
+    if unresolved:
+        print(f"{len(unresolved)} model(s) still need a manual factor before analysis.")
+    print("Next: `memory-graph sample-run --all` for a first run, or "
+          "`memory-graph rescore` to correct an existing graph without re-decoding.")
+    return 0
+
+
 def _cmd_doctor(_args: argparse.Namespace) -> int:
     from memory_graph.config import load_config
     from memory_graph.paths import DB_PATH, LOCAL_CONFIG
@@ -872,6 +994,19 @@ def main(argv: list[str] | None = None) -> int:
 
     sub.add_parser("init", help="create the database and data directories")
     sub.add_parser("doctor", help="report config and environment health")
+
+    cs = sub.add_parser(
+        "camera-scan",
+        help="find cameras missing a 35mm-equivalent focal and propose crop factors",
+    )
+    cs.add_argument("--hdd-root", default=None,
+                    help="also scan a read-only external archive root (optional)")
+    cs.add_argument("--dbfile", default=None,
+                    help="path to a specific Photos database (optional)")
+    cs.add_argument("--hdd-only", action="store_true",
+                    help="skip the Photos Library; scan only --hdd-root")
+    cs.add_argument("--confirm", action="store_true",
+                    help="write the resolvable crop factors to config.local.toml")
 
     lib = sub.add_parser("ingest-library", help="probe: read the Photos library (no-master guard)")
     lib.add_argument("--limit", type=int, default=0, help="stop after N candidates (0 = all)")
@@ -976,6 +1111,7 @@ def main(argv: list[str] | None = None) -> int:
     handlers = {
         "init": _cmd_init,
         "doctor": _cmd_doctor,
+        "camera-scan": _cmd_camera_scan,
         "ingest-library": _cmd_ingest_library,
         "ingest-hdd": _cmd_ingest_hdd,
         "cluster-hdd": _cmd_cluster_hdd,

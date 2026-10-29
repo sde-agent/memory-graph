@@ -176,3 +176,23 @@ def stream_hdd_with_stats(root: str, cfg: Config) -> tuple[list[Candidate], HddS
     stats = HddStats()
     out = list(stream_hdd(root, cfg, stats))
     return out, stats
+
+
+def stream_hdd_camera_meta(root: str, cfg: Config) -> Iterator[dict]:
+    """Yield camera metadata dicts (make/model/focal/focal35) for every HDD photo.
+
+    Metadata-only scan for the crop-factor backfill: it reads EXIF in batches but does
+    NOT decode images, so it is fast and still honors the read-only mount guard.
+    """
+    require_read_only(root)
+    extensions = frozenset(cfg.ingest.hdd_extensions)
+    for batch in _batched(_scan(root, extensions), 500):
+        tags = exifmod.read_batch(batch)
+        for path in batch:
+            exif = exifmod.normalize(tags.get(path))
+            yield {
+                "make": exif.get("make"),
+                "model": exif.get("model"),
+                "focal": exif.get("focal"),
+                "focal35": exif.get("focal35"),
+            }

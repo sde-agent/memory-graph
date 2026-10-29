@@ -270,3 +270,29 @@ def stream_library(cfg: Config, dbfile: str | None = None) -> Iterator[Candidate
             pass
         photos.append(assert_no_master_access(p))
     yield from select(photos, cfg)
+
+
+def stream_library_camera_meta(
+    dbfile: str | None = None,
+) -> Iterator[dict[str, Any]]:
+    """Yield camera metadata dicts (make/model/focal/focal35) for every Library photo.
+
+    This is a METADATA-ONLY scan for the camera crop-factor backfill: it does NOT decode
+    derivatives or touch masters, so it is fast over a large library. Each photo is still
+    wrapped by `assert_no_master_access`, and only osxphotos metadata is read.
+    """
+    import osxphotos
+
+    db = osxphotos.PhotosDB(dbfile=dbfile)
+    focal = _focal_35mm_by_uuid(db)
+    for raw in db.photos():
+        if getattr(raw, "ismovie", False):
+            continue
+        p = assert_no_master_access(raw)
+        exif = getattr(p, "exif_info", None)
+        yield {
+            "make": getattr(exif, "camera_make", None),
+            "model": getattr(exif, "camera_model", None),
+            "focal": getattr(exif, "focal_length", None),
+            "focal35": focal.get(getattr(p, "uuid", None)),
+        }
